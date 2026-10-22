@@ -10,6 +10,7 @@ const api: Api = {
   },
   db: {
     schemas: call('db:schemas'), tables: call('db:tables'), describe: call('db:describe'), graph: call('db:graph'),
+    triggers: call('db:triggers'), ddl: call('db:ddl'),
     rows: call('db:rows'), query: call('db:query'), update: call('db:update'), insert: call('db:insert'), remove: call('db:remove')
   },
   export: { table: call('export:table'), result: call('export:result') },

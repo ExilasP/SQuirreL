@@ -1,6 +1,9 @@
 import pg from 'pg'
 import type { ConnectionConfig, QueryResult, RowChange, RowsRequest, TableDetail, TableRef } from '@shared/types'
 import { type Driver, quoteIdent as q } from './types'
+import { buildDdl, fetchTriggers } from './postgresSchema'
+
+const FK_ACTIONS: Record<string, string> = { a: 'NO ACTION', r: 'RESTRICT', c: 'CASCADE', n: 'SET NULL', d: 'SET DEFAULT' }
 
 // Return int8 / numeric as strings to avoid precision loss; dates stay as ISO strings.
 pg.types.setTypeParser(1082, (v) => v)
@@ -28,7 +31,7 @@ export function createPostgresDriver(cfg: ConnectionConfig): Driver {
     const cols = await pool.query(
       `SELECT a.attname AS name, format_type(a.atttypid, a.atttypmod) AS type, NOT a.attnotnull AS nullable,
               pg_get_expr(d.adbin, d.adrelid) AS dflt,
-              COALESCE(i.indisprimary, false) AS pk
+              COALESCE(i.indisprimary, false) AS pk, col_description(a.attrelid, a.attnum) AS comment
        FROM pg_attribute a
        JOIN pg_class c ON c.oid = a.attrelid JOIN pg_namespace n ON n.oid = c.relnamespace
        LEFT JOIN pg_attrdef d ON d.adrelid = a.attrelid AND d.adnum = a.attnum
@@ -37,6 +40,7 @@ export function createPostgresDriver(cfg: ConnectionConfig): Driver {
     const fks = await pool.query(
       `SELECT con.conname AS name,
               ARRAY(SELECT attname::text FROM pg_attribute WHERE attrelid = con.conrelid AND attnum = ANY(con.conkey) ORDER BY array_position(con.conkey, attnum)) AS cols,
+              con.confupdtype AS on_update, con.confdeltype AS on_delete,
               rn.nspname AS ref_schema, rc.relname AS ref_table,
               ARRAY(SELECT attname::text FROM pg_attribute WHERE attrelid = con.confrelid AND attnum = ANY(con.confkey) ORDER BY array_position(con.confkey, attnum)) AS ref_cols
        FROM pg_constraint con
@@ -44,15 +48,16 @@ export function createPostgresDriver(cfg: ConnectionConfig): Driver {
        JOIN pg_class rc ON rc.oid = con.confrelid JOIN pg_namespace rn ON rn.oid = rc.relnamespace
        WHERE con.contype = 'f' AND n.nspname = $1 AND c.relname = $2`, [schema, table])
     const idx = await pool.query(
-      `SELECT ic.relname AS name, i.indisunique AS "unique",
+      `SELECT ic.relname AS name, i.indisunique AS "unique", i.indisprimary AS pk, am.amname AS method,
+              pg_get_expr(i.indpred, i.indrelid) AS predicate, pg_get_indexdef(i.indexrelid) AS def,
               ARRAY(SELECT attname::text FROM pg_attribute WHERE attrelid = i.indrelid AND attnum = ANY(i.indkey) ORDER BY array_position(i.indkey::int2[], attnum)) AS cols
-       FROM pg_index i JOIN pg_class c ON c.oid = i.indrelid JOIN pg_class ic ON ic.oid = i.indexrelid
+       FROM pg_index i JOIN pg_class c ON c.oid = i.indrelid JOIN pg_class ic ON ic.oid = i.indexrelid JOIN pg_am am ON am.oid = ic.relam
        JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = $1 AND c.relname = $2`, [schema, table])
     return {
       schema, name: table, kind,
-      columns: cols.rows.map((c) => ({ name: c.name, type: c.type, nullable: c.nullable, defaultValue: c.dflt, primaryKey: c.pk })),
-      foreignKeys: fks.rows.map((f) => ({ name: f.name, columns: f.cols, refSchema: f.ref_schema, refTable: f.ref_table, refColumns: f.ref_cols })),
-      indexes: idx.rows.map((i) => ({ name: i.name, unique: i.unique, columns: i.cols }))
+      columns: cols.rows.map((c) => ({ name: c.name, type: c.type, nullable: c.nullable, defaultValue: c.dflt, primaryKey: c.pk, comment: c.comment })),
+      foreignKeys: fks.rows.map((f) => ({ name: f.name, columns: f.cols, refSchema: f.ref_schema, refTable: f.ref_table, refColumns: f.ref_cols, onUpdate: FK_ACTIONS[f.on_update], onDelete: FK_ACTIONS[f.on_delete] })),
+      indexes: idx.rows.map((i) => ({ name: i.name, unique: i.unique, primary: i.pk, method: i.method, predicate: i.predicate, definition: i.def, columns: i.cols }))
     }
   }
 
@@ -84,6 +89,8 @@ export function createPostgresDriver(cfg: ConnectionConfig): Driver {
       const tables = await this.listTables(schema)
       return { tables: await Promise.all(tables.map((t) => tableDetail(schema, t.name, t.kind))) }
     },
+    listTriggers: (s, t) => fetchTriggers(pool, s, t),
+    async getDdl(s, t) { return buildDdl(pool, await tableDetail(s, t)) },
     async rows(req: RowsRequest) {
       const w = req.where?.trim() ? ` WHERE ${req.where}` : ''
       const order = req.orderBy ? ` ORDER BY ${q(req.orderBy.column)} ${req.orderBy.dir === 'desc' ? 'DESC' : 'ASC'}` : ''

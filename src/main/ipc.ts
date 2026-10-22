@@ -52,6 +52,8 @@ export function registerIpc(): void {
   h('db:tables', (id, s) => get(id).listTables(s))
   h('db:describe', (id, s, t) => get(id).describeTable(s, t))
   h('db:graph', (id, s) => get(id).graph(s))
+  h('db:triggers', (id, s, t) => get(id).listTriggers(s, t))
+  h('db:ddl', (id, s, t) => get(id).getDdl(s, t))
   h('db:rows', (id, req) => get(id).rows(req))
   h('db:query', (id, sql) => get(id).query(sql))
   h('db:update', (id, c) => get(id).update(c))

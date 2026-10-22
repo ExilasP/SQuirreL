@@ -28,6 +28,8 @@ export interface ColumnInfo {
   nullable: boolean
   defaultValue: string | null
   primaryKey: boolean
+  /** User-provided column comment, when the engine supports them (PostgreSQL). */
+  comment: string | null
 }
 
 export interface ForeignKey {
@@ -36,12 +38,34 @@ export interface ForeignKey {
   refSchema: string
   refTable: string
   refColumns: string[]
+  /** Referential action on update, e.g. `CASCADE`, `NO ACTION`. */
+  onUpdate: string
+  /** Referential action on delete, e.g. `CASCADE`, `SET NULL`. */
+  onDelete: string
 }
 
 export interface IndexInfo {
   name: string
   columns: string[]
   unique: boolean
+  /** True for the index backing the primary key. */
+  primary: boolean
+  /** Access method, e.g. `btree`, `gin`. */
+  method: string
+  /** `WHERE` clause of a partial index, null for a full index. */
+  predicate: string | null
+  /** Full `CREATE INDEX` statement, null when the engine keeps none (implicit indexes). */
+  definition: string | null
+}
+
+export interface TriggerInfo {
+  name: string
+  timing: 'BEFORE' | 'AFTER' | 'INSTEAD OF'
+  events: ('INSERT' | 'UPDATE' | 'DELETE' | 'TRUNCATE')[]
+  level: 'row' | 'statement'
+  isEnabled: boolean
+  /** Full `CREATE TRIGGER` statement. */
+  definition: string
 }
 
 export interface TableDetail extends TableRef {
@@ -101,6 +125,8 @@ export interface Api {
     tables(id: string, schema: string): Promise<TableRef[]>
     describe(id: string, schema: string, table: string): Promise<TableDetail>
     graph(id: string, schema: string): Promise<SchemaGraph>
+    triggers(id: string, schema: string, table: string): Promise<TriggerInfo[]>
+    ddl(id: string, schema: string, table: string): Promise<string>
     rows(id: string, req: RowsRequest): Promise<QueryResult>
     query(id: string, sql: string): Promise<QueryResult>
     update(id: string, change: RowChange): Promise<void>

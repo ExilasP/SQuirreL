@@ -1,5 +1,5 @@
 import type {
-  ConnectionConfig, QueryResult, RowChange, RowsRequest, SchemaGraph, TableDetail, TableRef
+  ConnectionConfig, QueryResult, RowChange, RowsRequest, SchemaGraph, TableDetail, TableRef, TriggerInfo
 } from '@shared/types'
 
 /**
@@ -13,6 +13,9 @@ export interface Driver {
   listTables(schema: string): Promise<TableRef[]>
   describeTable(schema: string, table: string): Promise<TableDetail>
   graph(schema: string): Promise<SchemaGraph>
+  listTriggers(schema: string, table: string): Promise<TriggerInfo[]>
+  /** Script recreating the table (or view) with its indexes and triggers. */
+  getDdl(schema: string, table: string): Promise<string>
   rows(req: RowsRequest): Promise<QueryResult>
   query(sql: string): Promise<QueryResult>
   update(change: RowChange): Promise<void>
