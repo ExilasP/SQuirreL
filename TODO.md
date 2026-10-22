@@ -17,6 +17,7 @@
 # FIX
 
 - carré blanc en bas à droite en cas de scroll bar horizontal ⇾ analyzer utilité et corriger si pas utile
+- bouton copié dans la tab DDL et DBML sous la zone de texte (impossible de cliquer)
 
 ## Idées de choses à rajouter
 
