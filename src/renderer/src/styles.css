@@ -37,3 +37,4 @@ input, textarea, .cm-editor { user-select: text; }
 .cm-scroller { cursor: text; }
 .react-flow__attribution { display: none; }
 .react-flow { --xy-background-color: var(--color-bg); }
+.react-flow__edge, .react-flow__edge-interaction { cursor: default; }
