@@ -30,7 +30,7 @@ export function Sidebar() {
           const node = opened[c.id]
           return (
             <div key={c.id} className="mb-1">
-              <div className="group flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-raised cursor-pointer"
+              <div className="group flex items-center gap-2 px-2 h-8 rounded-md hover:bg-raised cursor-pointer"
                 onClick={() => (node ? toggle(c.id) : openConnection(c.id))}>
                 <ChevronRight size={14} className={`text-dim transition-transform ${node && !collapsed[c.id] ? 'rotate-90' : ''}`} />
                 <span className="size-2 rounded-full" style={{ background: node ? c.color : '#3a4050' }} />
