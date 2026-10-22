@@ -1,18 +1,23 @@
 import { useState } from 'react'
 import { ChevronRight, Copy, Database, Eye, FileCode2, FolderClosed, Network, Pencil, Plus, Power, Table2, Trash2, Users } from 'lucide-react'
-import type { ConnectionConfig, SavedQuery } from '@shared/types'
+import { parseConnectionKey, type ConnectionConfig, type SavedQuery } from '@shared/types'
 import { useStore } from '@/lib/store'
 import { ConnectionDialog } from './ConnectionDialog'
 import { NameDialog } from './NameDialog'
+import { TreeRow } from './TreeRow'
 
 export function Sidebar() {
-  const { connections, savedQueries, openSavedQuery, renameSavedQuery, removeSavedQuery, opened, openConnection, closeConnection, removeConnection, loadTables, openTab, openTable, openRoles, openNewQuery } = useStore()
+  const { connections, savedQueries, openSavedQuery, renameSavedQuery, removeSavedQuery, opened, openConnection, closeConnection, removeConnection, openDatabase, databaseKeyOf, openTab, openRoles, openNewQuery } = useStore()
   const [dialog, setDialog] = useState<ConnectionConfig | 'new' | null>(null)
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const [filter, setFilter] = useState('')
-  const [tableMenu, setTableMenu] = useState<{ x: number; y: number; connId: string; schema: string; table: string } | null>(null)
+  const [tableMenu, setTableMenu] = useState<TableMenuTarget | null>(null)
   const [renaming, setRenaming] = useState<SavedQuery | null>(null)
   const toggle = (k: string) => setCollapsed((c) => ({ ...c, [k]: !c[k] }))
+  /** Fold state of database nodes; a database that was never touched falls back to `fallback`. */
+  const [unfoldedMap, setUnfolded] = useState<Record<string, boolean>>({})
+  const unfolded = (k: string, fallback: boolean) => unfoldedMap[k] ?? fallback
+  const toggleUnfolded = (k: string, fallback: boolean) => setUnfolded((m) => ({ ...m, [k]: !(m[k] ?? fallback) }))
 
   return (
     <aside className="w-72 shrink-0 bg-panel border-r border-line flex flex-col">
@@ -31,64 +36,43 @@ export function Sidebar() {
         )}
         {connections.map((c) => {
           const node = opened[c.id]
+          const isUnfolded = !!node && !collapsed[c.id]
           return (
             <div key={c.id} className="mb-1">
-              <div className="group flex items-center gap-2 px-2 h-8 rounded-md hover:bg-raised cursor-pointer"
-                onClick={() => (node ? toggle(c.id) : openConnection(c.id))}>
-                <ChevronRight size={14} className={`text-dim transition-transform ${node && !collapsed[c.id] ? 'rotate-90' : ''}`} />
-                <span className="size-2 rounded-full" style={{ background: node ? c.color : '#3a4050' }} />
-                <span className="truncate font-medium">{c.name}</span>
-                <span className="text-[10px] uppercase text-dim ml-1">{c.driver === 'postgres' ? 'pg' : 'sqlite'}</span>
-                <span className="ml-auto hidden group-hover:flex gap-0.5" onClick={(e) => e.stopPropagation()}>
+              <TreeRow depth={0} icon={Database} label={c.name} isExpanded={isUnfolded} dotColor={node ? c.color : '#3a4050'} tag={c.driver === 'postgres' ? 'pg' : 'sqlite'}
+                onClick={() => (node ? toggle(c.id) : openConnection(c.id))}
+                actions={<>
                   <button className="btn ghost !p-1" title="Edit" onClick={() => setDialog(c)}><Pencil size={12} /></button>
                   {node && <button className="btn ghost !p-1" title="Disconnect" onClick={() => closeConnection(c.id)}><Power size={12} /></button>}
                   <button className="btn ghost danger !p-1" title="Delete" onClick={() => confirm(`Delete "${c.name}"?`) && removeConnection(c.id)}><Trash2 size={12} /></button>
-                </span>
-              </div>
-              {node && !collapsed[c.id] && (
-                <div className="ml-4 border-l border-line pl-1">
-                  {c.driver === 'postgres' && (
-                    <div className="px-2 py-1">
-                      <button className="btn ghost !py-0.5 text-dim" onClick={() => openRoles(c.id)}><Users size={13} /> Roles</button>
-                    </div>
-                  )}
-                  <div className="px-2 py-1">
-                    <button className="btn ghost !py-0.5 text-dim" onClick={() => openNewQuery(c.id)}><FileCode2 size={13} /> New query</button>
-                  </div>
-                  <SavedQueries queries={savedQueries.filter((q) => q.connId === c.id && q.name.toLowerCase().includes(filter.toLowerCase()))}
+                </>} />
+              {isUnfolded && (
+                <>
+                  {c.driver === 'postgres' && <TreeRow depth={1} icon={Users} label="Roles" onClick={() => openRoles(c.id)} />}
+                  {c.driver !== 'postgres' && <TreeRow depth={1} icon={FileCode2} label="New query" onClick={() => openNewQuery(c.id)} />}
+                  <SavedQueries queries={savedQueries.filter((q) => parseConnectionKey(q.connId).connId === c.id && q.name.toLowerCase().includes(filter.toLowerCase()))}
                     isCollapsed={!!collapsed[`${c.id}:queries`]} onToggle={() => toggle(`${c.id}:queries`)}
                     onOpen={openSavedQuery} onRename={setRenaming} onRemove={(q) => confirm(`Delete "${q.name}"?`) && removeSavedQuery(q.id)}
-                    onDuplicate={(q) => openTab({ id: `q:${c.id}:${Date.now()}`, kind: 'query', connId: c.id, title: `${q.name} copy`, sql: q.sql, savedId: null, savedSql: '' })} />
-                  {node.schemas.map((sc) => {
-                    const key = `${c.id}:${sc}`; const tables = node.tables[sc]
-                    // PostgreSQL always lists its schemas, even when `public` is the only one.
-                    const showSchemas = c.driver === 'postgres' || node.schemas.length > 1
-                    const shown = tables?.filter((t) => t.name.toLowerCase().includes(filter.toLowerCase()))
-                    return (
-                      <div key={sc}>
-                        {showSchemas && (
-                          <div className="flex items-center gap-1 px-2 py-1 text-dim hover:text-fg cursor-pointer" onClick={() => { if (!tables) { setCollapsed((m) => ({ ...m, [key]: false })); loadTables(c.id, sc) } else toggle(key) }}>
-                            <ChevronRight size={12} className={`transition-transform ${!collapsed[key] && tables ? 'rotate-90' : ''}`} />
-                            <FolderClosed size={12} />
-                            <span className="text-xs">{sc}</span>
-                            {tables && <span className="text-[10px] ml-1">{tables.length}</span>}
-                          </div>
-                        )}
-                        <div className={showSchemas ? 'pl-5 pr-1' : 'px-1'}>
-                          <button className="btn ghost !py-0.5 text-dim" onClick={() => openTab({ id: `d:${c.id}:${sc}`, kind: 'diagram', connId: c.id, schema: sc, title: `ER · ${sc}` })}><Network size={13} /> Diagram</button>
+                    onDuplicate={(q) => openTab({ id: `q:${q.connId}:${Date.now()}`, kind: 'query', connId: q.connId, title: `${q.name} copy`, sql: q.sql, savedId: null, savedSql: '' })} />
+                  {c.driver === 'postgres'
+                    ? node.databases.map((database) => {
+                      const key = databaseKeyOf(c.id, database); const isDefault = key === c.id
+                      const isDbUnfolded = unfolded(`db:${key}`, isDefault) && !!opened[key]
+                      return (
+                        <div key={database}>
+                          <TreeRow depth={1} icon={Database} label={database} isExpanded={isDbUnfolded}
+                            onClick={() => { if (!opened[key]) { setUnfolded((m) => ({ ...m, [`db:${key}`]: true })); openDatabase(c.id, database) } else toggleUnfolded(`db:${key}`, isDefault) }} />
+                          {isDbUnfolded && (
+                            <>
+                              <TreeRow depth={2} icon={FileCode2} label="New query" onClick={() => openNewQuery(key)} />
+                              <DatabaseTree connKey={key} depth={2} showSchemas filter={filter} onTableMenu={setTableMenu} />
+                            </>
+                          )}
                         </div>
-                        {(!showSchemas || (!collapsed[key] && tables)) && shown?.map((t) => (
-                          <div key={t.name} className={`flex items-center gap-2 ${showSchemas ? 'pl-8' : 'pl-4'} pr-2 py-1 rounded-md hover:bg-raised cursor-pointer`}
-                            onContextMenu={(e) => { e.preventDefault(); setTableMenu({ x: e.clientX, y: e.clientY, connId: c.id, schema: sc, table: t.name }) }}
-                            onClick={() => openTable(c.id, sc, t.name)}>
-                            {t.kind === 'view' ? <Eye size={13} className="text-dim" /> : <Table2 size={13} className="text-dim" />}
-                            <span className="truncate">{t.name}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )
-                  })}
-                </div>
+                      )
+                    })
+                    : <DatabaseTree connKey={c.id} depth={1} showSchemas={node.schemas.length > 1} filter={filter} onTableMenu={setTableMenu} />}
+                </>
               )}
             </div>
           )
@@ -146,4 +130,53 @@ function SavedQueries({ queries, isCollapsed, onToggle, onOpen, onRename, onDupl
       ))}
     </div>
   )
+}
+
+interface TableMenuTarget { x: number; y: number; connId: string; schema: string; table: string }
+
+interface DatabaseTreeProps {
+  /** Key of the opened database in the store (see `databaseKey`). */
+  connKey: string
+  depth: number
+  /** Group tables under a folder per schema; SQLite has a single implicit one. */
+  showSchemas: boolean
+  filter: string
+  onTableMenu(target: TableMenuTarget): void
+}
+
+/** Schemas of one opened database, each folding its diagram entry and its tables. */
+function DatabaseTree({ connKey, depth, showSchemas, filter, onTableMenu }: DatabaseTreeProps) {
+  const { opened, loadTables, openTab, openTable } = useStore()
+  const [unfoldedMap, setUnfolded] = useState<Record<string, boolean>>({})
+  const node = opened[connKey]
+  if (!node) return null
+
+  const renderSchema = (schema: string, index: number) => {
+    const tables = node.tables[schema]
+    // The first schema is loaded on open and starts unfolded.
+    const isUnfolded = (!showSchemas || (unfoldedMap[schema] ?? index === 0)) && !!tables
+    const childDepth = showSchemas ? depth + 1 : depth
+    const shown = tables?.filter((t) => t.name.toLowerCase().includes(filter.toLowerCase()))
+    const onToggle = () => {
+      if (!tables) loadTables(connKey, schema)
+      setUnfolded((m) => ({ ...m, [schema]: tables ? !(m[schema] ?? index === 0) : true }))
+    }
+    return (
+      <div key={schema}>
+        {showSchemas && <TreeRow depth={depth} icon={FolderClosed} label={schema} count={tables?.length} isExpanded={isUnfolded} onClick={onToggle} />}
+        {isUnfolded && (
+          <>
+            <TreeRow depth={childDepth} icon={Network} label="Diagram"
+              onClick={() => openTab({ id: `d:${connKey}:${schema}`, kind: 'diagram', connId: connKey, schema, title: `ER · ${schema}` })} />
+            {shown?.map((t) => (
+              <TreeRow key={t.name} depth={childDepth} icon={t.kind === 'view' ? Eye : Table2} label={t.name}
+                onClick={() => openTable(connKey, schema, t.name)}
+                onContextMenu={(e) => { e.preventDefault(); onTableMenu({ x: e.clientX, y: e.clientY, connId: connKey, schema, table: t.name }) }} />
+            ))}
+          </>
+        )}
+      </div>
+    )
+  }
+  return <>{node.schemas.map(renderSchema)}</>
 }
