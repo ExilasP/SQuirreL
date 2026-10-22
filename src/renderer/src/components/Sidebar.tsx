@@ -47,9 +47,13 @@ export function Sidebar() {
               </div>
               {node && !collapsed[c.id] && (
                 <div className="ml-4 border-l border-line pl-1">
-                  <div className="flex gap-1 px-2 py-1">
+                  {c.driver === 'postgres' && (
+                    <div className="px-2 py-1">
+                      <button className="btn ghost !py-0.5 text-dim" onClick={() => openRoles(c.id)}><Users size={13} /> Roles</button>
+                    </div>
+                  )}
+                  <div className="px-2 py-1">
                     <button className="btn ghost !py-0.5 text-dim" onClick={() => openNewQuery(c.id)}><FileCode2 size={13} /> New query</button>
-                    {c.driver === 'postgres' && <button className="btn ghost !py-0.5 text-dim" onClick={() => openRoles(c.id)}><Users size={13} /> Roles</button>}
                   </div>
                   <SavedQueries queries={savedQueries.filter((q) => q.connId === c.id && q.name.toLowerCase().includes(filter.toLowerCase()))}
                     isCollapsed={!!collapsed[`${c.id}:queries`]} onToggle={() => toggle(`${c.id}:queries`)}
@@ -70,11 +74,11 @@ export function Sidebar() {
                             {tables && <span className="text-[10px] ml-1">{tables.length}</span>}
                           </div>
                         )}
-                        <div className="px-1">
+                        <div className={showSchemas ? 'pl-5 pr-1' : 'px-1'}>
                           <button className="btn ghost !py-0.5 text-dim" onClick={() => openTab({ id: `d:${c.id}:${sc}`, kind: 'diagram', connId: c.id, schema: sc, title: `ER · ${sc}` })}><Network size={13} /> Diagram</button>
                         </div>
                         {(!showSchemas || (!collapsed[key] && tables)) && shown?.map((t) => (
-                          <div key={t.name} className="flex items-center gap-2 pl-4 pr-2 py-1 rounded-md hover:bg-raised cursor-pointer"
+                          <div key={t.name} className={`flex items-center gap-2 ${showSchemas ? 'pl-8' : 'pl-4'} pr-2 py-1 rounded-md hover:bg-raised cursor-pointer`}
                             onContextMenu={(e) => { e.preventDefault(); setTableMenu({ x: e.clientX, y: e.clientY, connId: c.id, schema: sc, table: t.name }) }}
                             onClick={() => openTable(c.id, sc, t.name)}>
                             {t.kind === 'view' ? <Eye size={13} className="text-dim" /> : <Table2 size={13} className="text-dim" />}
