@@ -8,9 +8,9 @@
 
 ## Feature
 
-- Pouvoir replier le sélecteur de DB
 - Sauvegarder les scripts SQL, et pouvoir les recharger
 - Rajouter des raccourcis clavier
+- Pouvoir replier le sélecteur de DB
 - Ajouter un système de mise à jour automatique (en allant chercher sur git)
 - Ajouter un wizard d'installation (Windows), ou réfléchir à une autre solution
 
