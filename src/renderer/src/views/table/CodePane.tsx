@@ -17,13 +17,13 @@ interface Props {
 /** Read-only, copyable block of generated source (DDL, DBML). */
 export function CodePane({ code, emptyMessage, sqlDriver }: Props) {
   const [isCopied, setCopied] = useState(false)
-  if (code === null) return <div className="h-full grid place-items-center text-dim">Loading…</div>
-  if (!code.trim()) return <div className="text-dim text-center py-10">{emptyMessage}</div>
-
   const extensions = useMemo(() => [
     EditorView.editable.of(false),
     ...(sqlDriver ? [sqlLang({ dialect: sqlDriver === 'postgres' ? PostgreSQL : SQLite })] : [])
   ], [sqlDriver])
+
+  if (code === null) return <div className="h-full grid place-items-center text-dim">Loading…</div>
+  if (!code.trim()) return <div className="text-dim text-center py-10">{emptyMessage}</div>
 
   const copy = async () => {
     await navigator.clipboard.writeText(code)
