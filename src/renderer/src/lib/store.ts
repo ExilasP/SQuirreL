@@ -4,6 +4,7 @@ import type { ConnectionConfig, SavedQuery, TableRef } from '@shared/types'
 export type Tab =
   | { id: string; kind: 'table'; connId: string; schema: string; table: string; title: string }
   | { id: string; kind: 'query'; connId: string; title: string; sql: string; /** Library entry this tab edits, `null` for a scratch query. */ savedId: string | null; /** Last saved text, to detect unsaved changes. */ savedSql: string }
+  | { id: string; kind: 'roles'; connId: string; title: string }
   | { id: string; kind: 'diagram'; connId: string; schema: string; title: string; /** When set, only this table and its FK neighbours are drawn. */ focusTable?: string }
 
 interface TreeNode { schemas: string[]; tables: Record<string, TableRef[]> }
@@ -23,6 +24,8 @@ interface State {
   loadTables(connId: string, schema: string): Promise<void>
   openTab(t: Tab): void
   openTable(connId: string, schema: string, table: string): void
+  /** Opens (or focuses) the roles and users tab of a connection. */
+  openRoles(connId: string): void
   /** Opens a blank query tab on `connId`. */
   openNewQuery(connId: string): void
   /** Opens a blank query on the active tab's connection, else the first open one. */
@@ -79,6 +82,9 @@ export const useStore = create<State>((set, get) => ({
   },
   openTable(connId, schema, table) {
     get().openTab({ id: `t:${connId}:${schema}.${table}`, kind: 'table', connId, schema, table, title: table })
+  },
+  openRoles(connId) {
+    get().openTab({ id: `r:${connId}`, kind: 'roles', connId, title: 'Roles' })
   },
   openNewQuery(connId) {
     get().openTab({ id: `q:${connId}:${Date.now()}`, kind: 'query', connId, title: 'Query', sql: '', savedId: null, savedSql: '' })

@@ -1,12 +1,12 @@
 import { useState } from 'react'
-import { ChevronRight, Copy, Database, Eye, FileCode2, FolderClosed, Network, Pencil, Plus, Power, Table2, Trash2 } from 'lucide-react'
+import { ChevronRight, Copy, Database, Eye, FileCode2, FolderClosed, Network, Pencil, Plus, Power, Table2, Trash2, Users } from 'lucide-react'
 import type { ConnectionConfig, SavedQuery } from '@shared/types'
 import { useStore } from '@/lib/store'
 import { ConnectionDialog } from './ConnectionDialog'
 import { NameDialog } from './NameDialog'
 
 export function Sidebar() {
-  const { connections, savedQueries, openSavedQuery, renameSavedQuery, removeSavedQuery, opened, openConnection, closeConnection, removeConnection, loadTables, openTab, openTable, openNewQuery } = useStore()
+  const { connections, savedQueries, openSavedQuery, renameSavedQuery, removeSavedQuery, opened, openConnection, closeConnection, removeConnection, loadTables, openTab, openTable, openRoles, openNewQuery } = useStore()
   const [dialog, setDialog] = useState<ConnectionConfig | 'new' | null>(null)
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const [filter, setFilter] = useState('')
@@ -49,6 +49,7 @@ export function Sidebar() {
                 <div className="ml-4 border-l border-line pl-1">
                   <div className="flex gap-1 px-2 py-1">
                     <button className="btn ghost !py-0.5 text-dim" onClick={() => openNewQuery(c.id)}><FileCode2 size={13} /> New query</button>
+                    {c.driver === 'postgres' && <button className="btn ghost !py-0.5 text-dim" onClick={() => openRoles(c.id)}><Users size={13} /> Roles</button>}
                   </div>
                   <SavedQueries queries={savedQueries.filter((q) => q.connId === c.id && q.name.toLowerCase().includes(filter.toLowerCase()))}
                     isCollapsed={!!collapsed[`${c.id}:queries`]} onToggle={() => toggle(`${c.id}:queries`)}
@@ -56,19 +57,23 @@ export function Sidebar() {
                     onDuplicate={(q) => openTab({ id: `q:${c.id}:${Date.now()}`, kind: 'query', connId: c.id, title: `${q.name} copy`, sql: q.sql, savedId: null, savedSql: '' })} />
                   {node.schemas.map((sc) => {
                     const key = `${c.id}:${sc}`; const tables = node.tables[sc]
+                    // PostgreSQL always lists its schemas, even when `public` is the only one.
+                    const showSchemas = c.driver === 'postgres' || node.schemas.length > 1
                     const shown = tables?.filter((t) => t.name.toLowerCase().includes(filter.toLowerCase()))
                     return (
                       <div key={sc}>
-                        {node.schemas.length > 1 && (
+                        {showSchemas && (
                           <div className="flex items-center gap-1 px-2 py-1 text-dim hover:text-fg cursor-pointer" onClick={() => { if (!tables) { setCollapsed((m) => ({ ...m, [key]: false })); loadTables(c.id, sc) } else toggle(key) }}>
                             <ChevronRight size={12} className={`transition-transform ${!collapsed[key] && tables ? 'rotate-90' : ''}`} />
+                            <FolderClosed size={12} />
                             <span className="text-xs">{sc}</span>
+                            {tables && <span className="text-[10px] ml-1">{tables.length}</span>}
                           </div>
                         )}
                         <div className="px-1">
                           <button className="btn ghost !py-0.5 text-dim" onClick={() => openTab({ id: `d:${c.id}:${sc}`, kind: 'diagram', connId: c.id, schema: sc, title: `ER · ${sc}` })}><Network size={13} /> Diagram</button>
                         </div>
-                        {(node.schemas.length === 1 || (!collapsed[key] && tables)) && shown?.map((t) => (
+                        {(!showSchemas || (!collapsed[key] && tables)) && shown?.map((t) => (
                           <div key={t.name} className="flex items-center gap-2 pl-4 pr-2 py-1 rounded-md hover:bg-raised cursor-pointer"
                             onContextMenu={(e) => { e.preventDefault(); setTableMenu({ x: e.clientX, y: e.clientY, connId: c.id, schema: sc, table: t.name }) }}
                             onClick={() => openTable(c.id, sc, t.name)}>

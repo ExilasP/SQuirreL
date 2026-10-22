@@ -2,6 +2,7 @@ import pg from 'pg'
 import type { ConnectionConfig, QueryResult, RowChange, RowsRequest, TableDetail, TableRef } from '@shared/types'
 import { type Driver, quoteIdent as q } from './types'
 import { buildDdl, fetchTriggers } from './postgresSchema'
+import { fetchRoles } from './postgresRoles'
 
 const FK_ACTIONS: Record<string, string> = { a: 'NO ACTION', r: 'RESTRICT', c: 'CASCADE', n: 'SET NULL', d: 'SET DEFAULT' }
 
@@ -78,6 +79,7 @@ export function createPostgresDriver(cfg: ConnectionConfig): Driver {
       const r = await pool.query(`SELECT nspname FROM pg_namespace WHERE nspname NOT LIKE 'pg\\_%' AND nspname <> 'information_schema' ORDER BY (nspname = 'public') DESC, nspname`)
       return r.rows.map((x) => x.nspname)
     },
+    listRoles: () => fetchRoles(pool),
     async listTables(schema) {
       const r = await pool.query(
         `SELECT c.relname AS name, c.relkind AS kind FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace

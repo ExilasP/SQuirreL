@@ -1,5 +1,5 @@
 import type {
-  ConnectionConfig, QueryResult, RowChange, RowsRequest, SchemaGraph, TableDetail, TableRef, TriggerInfo
+  ConnectionConfig, QueryResult, RoleInfo, RowChange, RowsRequest, SchemaGraph, TableDetail, TableRef, TriggerInfo
 } from '@shared/types'
 
 /**
@@ -10,6 +10,8 @@ export interface Driver {
   connect(): Promise<void>
   disconnect(): Promise<void>
   listSchemas(): Promise<string[]>
+  /** Server roles (users and groups); engines without roles return an empty list. */
+  listRoles(): Promise<RoleInfo[]>
   listTables(schema: string): Promise<TableRef[]>
   describeTable(schema: string, table: string): Promise<TableDetail>
   graph(schema: string): Promise<SchemaGraph>

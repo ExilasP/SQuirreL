@@ -68,6 +68,23 @@ export interface TriggerInfo {
   definition: string
 }
 
+/** A PostgreSQL role: a login role is a "user", a role without login is a "group". */
+export interface RoleInfo {
+  name: string
+  canLogin: boolean
+  isSuperuser: boolean
+  canCreateDb: boolean
+  canCreateRole: boolean
+  isReplication: boolean
+  bypassRls: boolean
+  /** Maximum concurrent connections, `null` when unlimited. */
+  connectionLimit: number | null
+  /** ISO timestamp after which the password expires, `null` when it never does. */
+  validUntil: string | null
+  /** Names of the roles this one is a member of. */
+  memberOf: string[]
+}
+
 export interface TableDetail extends TableRef {
   columns: ColumnInfo[]
   foreignKeys: ForeignKey[]
@@ -133,6 +150,8 @@ export interface Api {
   }
   db: {
     schemas(id: string): Promise<string[]>
+    /** Roles of the server; empty for engines without a role system (SQLite). */
+    roles(id: string): Promise<RoleInfo[]>
     tables(id: string, schema: string): Promise<TableRef[]>
     describe(id: string, schema: string, table: string): Promise<TableDetail>
     graph(id: string, schema: string): Promise<SchemaGraph>

@@ -50,6 +50,7 @@ export function registerIpc(): void {
   })
 
   h('db:schemas', (id) => get(id).listSchemas())
+  h('db:roles', (id) => get(id).listRoles())
   h('db:tables', (id, s) => get(id).listTables(s))
   h('db:describe', (id, s, t) => get(id).describeTable(s, t))
   h('db:graph', (id, s) => get(id).graph(s))

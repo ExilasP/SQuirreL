@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { FileCode2, Network, Table2, X } from 'lucide-react'
+import { FileCode2, Network, Table2, Users, X } from 'lucide-react'
 import { useStore } from '@/lib/store'
 import { useGlobalShortcuts } from '@/lib/useGlobalShortcuts'
 import { Sidebar } from '@/components/Sidebar'
@@ -8,8 +8,9 @@ import { Welcome } from '@/components/Welcome'
 import { TableView } from '@/views/TableView'
 import { QueryView } from '@/views/QueryView'
 import { DiagramView } from '@/views/DiagramView'
+import { RolesView } from '@/views/RolesView'
 
-const icon = { table: Table2, query: FileCode2, diagram: Network }
+const icon = { table: Table2, query: FileCode2, diagram: Network, roles: Users }
 
 export function App() {
   const { tabs, activeTab, setActive, closeTab, init, error, setError, connections } = useStore()
@@ -42,6 +43,7 @@ export function App() {
               {t.kind === 'table' && <TableView tab={t} />}
               {t.kind === 'query' && <QueryView tab={t} />}
               {t.kind === 'diagram' && <DiagramView tab={t} />}
+              {t.kind === 'roles' && <RolesView tab={t} />}
             </div>
           ))}
           {!active && <Welcome />}
