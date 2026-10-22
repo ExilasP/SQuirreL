@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import CodeMirror from '@uiw/react-codemirror'
 import { sql as sqlLang, PostgreSQL, SQLite } from '@codemirror/lang-sql'
 import { oneDark } from '@codemirror/theme-one-dark'
-import { keymap } from '@codemirror/view'
+import { keymap, type EditorView } from '@codemirror/view'
 import { Prec } from '@codemirror/state'
 import { Play, Save, FolderOpen } from 'lucide-react'
 import type { QueryResult } from '@shared/types'
@@ -26,6 +26,7 @@ export function QueryView({ tab }: { tab: Extract<Tab, { kind: 'query' }> }) {
     finally { setRunning(false) }
   }
 
+  const editorRef = useRef<EditorView | null>(null)
   const runRef = useRef(run)
   runRef.current = run
 
@@ -34,6 +35,16 @@ export function QueryView({ tab }: { tab: Extract<Tab, { kind: 'query' }> }) {
     // highest precedence: the default keymap binds Mod-Enter to "insert blank line"
     Prec.highest(keymap.of([{ key: 'Mod-Enter', run: () => { runRef.current(); return true } }]))
   ], [driver])
+
+  // Clicking the empty area below the last line should behave like a text area:
+  // focus the editor and put the caret at the end of the document.
+  const focusEditorEnd = (e: React.MouseEvent<HTMLDivElement>) => {
+    const view = editorRef.current
+    if (!view || (e.target as HTMLElement).closest('.cm-content')) return
+    e.preventDefault()
+    view.dispatch({ selection: { anchor: view.state.doc.length }, scrollIntoView: true })
+    view.focus()
+  }
 
   const save = async () => {
     const p = await window.api.scripts.saveFile(tab.path, tab.sql)
@@ -55,8 +66,9 @@ export function QueryView({ tab }: { tab: Extract<Tab, { kind: 'query' }> }) {
           <button className="btn" onClick={save}><Save size={14} /> Save</button>
         </div>
       </div>
-      <div className="h-[40%] border-b border-line overflow-auto">
+      <div className="h-[40%] border-b border-line overflow-auto cursor-text" onMouseDown={focusEditorEnd}>
         <CodeMirror value={tab.sql} height="100%" theme={oneDark} extensions={extensions} basicSetup={{ foldGutter: false }}
+          onCreateEditor={(view) => { editorRef.current = view }}
           onChange={(v) => patchQuery(tab.id, { sql: v })}
           onStatistics={(s) => setSel(s.selectionCode)} />
       </div>

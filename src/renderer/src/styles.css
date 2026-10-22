@@ -34,5 +34,6 @@ input, textarea, .cm-editor { user-select: text; }
 .field:focus { border-color: var(--color-accent); }
 .cm-editor { height: 100%; background: transparent !important; font-family: var(--font-mono); font-size: 13px; }
 .cm-editor.cm-focused { outline: none; }
+.cm-scroller { cursor: text; }
 .react-flow__attribution { display: none; }
 .react-flow { --xy-background-color: var(--color-bg); }
