@@ -2,9 +2,6 @@
 
 ## Config
 
-- Ajouter un AGENT.md et un CLAUDE.md avec les informations tech du projet et les bonnes partiques
-- Rajouter des régles de conventionnal commit atomique
-- Rajouter un git
 - Trouver un nom
 - Trouver un logo
 - Ajouter un liscneces
