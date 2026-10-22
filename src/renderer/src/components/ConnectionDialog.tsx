@@ -1,20 +1,44 @@
-import { useState } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import { FolderOpen, X } from 'lucide-react'
 import type { ConnectionConfig, DriverId } from '@shared/types'
-import { useStore } from '@/lib/store'
+import { errMessage, useStore } from '@/lib/store'
 
 const COLORS = ['#7c8cff', '#4fd1a5', '#ffb86b', '#ff6b7a', '#c792ea', '#5ac8fa']
+
+/**
+ * Must live at module level: declared inside the dialog it would be a new component
+ * type on every render, remounting each input and stealing focus on every change.
+ */
+function Label({ t, children }: { t: string; children: ReactNode }) {
+  return <label className="block"><span className="text-dim text-xs mb-1 block">{t}</span>{children}</label>
+}
+
+const isValidPort = (port: number | undefined): boolean => port === undefined || (Number.isInteger(port) && port > 0 && port <= 65535)
+
+/** Trims the free-text fields: pasted values often carry stray spaces or newlines. */
+const normalize = (c: ConnectionConfig): ConnectionConfig => ({
+  ...c, name: c.name.trim(), host: c.host?.trim(), database: c.database?.trim(), user: c.user?.trim(), file: c.file?.trim()
+})
 
 export function ConnectionDialog({ initial, onClose }: { initial?: ConnectionConfig; onClose(): void }) {
   const save = useStore((s) => s.saveConnection)
   const [c, setC] = useState<ConnectionConfig>(initial ?? { id: crypto.randomUUID(), name: '', driver: 'sqlite', color: COLORS[0], port: 5432, host: 'localhost' })
   const [status, setStatus] = useState<{ ok: boolean; error?: string } | null>(null)
-  const set = (p: Partial<ConnectionConfig>) => { setC({ ...c, ...p }); setStatus(null) }
-  const valid = c.driver === 'sqlite' ? !!c.file : !!c.host && !!c.database
+  const [isTesting, setTesting] = useState(false)
+  /** Id of the latest test run, so a slow outdated result cannot overwrite a newer one. */
+  const testRun = useRef(0)
+  const set = (p: Partial<ConnectionConfig>) => { setC((prev) => ({ ...prev, ...p })); setStatus(null); testRun.current++; setTesting(false) }
+  const valid = c.driver === 'sqlite' ? !!c.file?.trim() : !!c.host?.trim() && !!c.database?.trim() && isValidPort(c.port)
 
-  const Label = ({ t, children }: { t: string; children: React.ReactNode }) => (
-    <label className="block"><span className="text-dim text-xs mb-1 block">{t}</span>{children}</label>
-  )
+  const runTest = async () => {
+    const run = ++testRun.current
+    setTesting(true); setStatus(null)
+    let result: { ok: boolean; error?: string }
+    try { result = await window.api.connections.test(normalize(c)) }
+    catch (e) { result = { ok: false, error: errMessage(e) } }
+    if (run !== testRun.current) return
+    setStatus(result); setTesting(false)
+  }
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm grid place-items-center z-50" onMouseDown={onClose}>
@@ -32,7 +56,7 @@ export function ConnectionDialog({ initial, onClose }: { initial?: ConnectionCon
               </button>
             ))}
           </div>
-          <Label t="Name"><input className="field" value={c.name} placeholder="My database" onChange={(e) => set({ name: e.target.value })} autoFocus /></Label>
+          <Label t="Name"><input className="field" value={c.name} placeholder="My database" onChange={(e) => set({ name: e.target.value })} autoFocus={!initial} /></Label>
           {c.driver === 'sqlite' ? (
             <Label t="Database file">
               <div className="flex gap-2">
@@ -44,7 +68,8 @@ export function ConnectionDialog({ initial, onClose }: { initial?: ConnectionCon
             <>
               <div className="grid grid-cols-[1fr_90px] gap-3">
                 <Label t="Host"><input className="field" value={c.host ?? ''} onChange={(e) => set({ host: e.target.value })} /></Label>
-                <Label t="Port"><input className="field" type="number" value={c.port ?? 5432} onChange={(e) => set({ port: +e.target.value })} /></Label>
+                <Label t="Port"><input className="field" type="number" min={1} max={65535} placeholder="5432" value={c.port ?? ''}
+                  onChange={(e) => set({ port: e.target.value === '' ? undefined : Number(e.target.value) })} /></Label>
               </div>
               <Label t="Database"><input className="field" value={c.database ?? ''} onChange={(e) => set({ database: e.target.value })} /></Label>
               <div className="grid grid-cols-2 gap-3">
@@ -59,13 +84,15 @@ export function ConnectionDialog({ initial, onClose }: { initial?: ConnectionCon
               <button key={col} onClick={() => set({ color: col })} className="size-5 rounded-full" style={{ background: col, outline: c.color === col ? `2px solid ${col}` : 'none', outlineOffset: 2 }} />
             ))}
           </div>
+          {!isValidPort(c.port) && <div className="text-xs text-danger">Port must be between 1 and 65535</div>}
           {status && <div className={`text-xs ${status.ok ? 'text-ok' : 'text-danger'}`}>{status.ok ? 'Connection successful' : status.error}</div>}
         </div>
         <div className="flex justify-between px-5 py-4 border-t border-line">
-          <button className="btn" disabled={!valid} onClick={async () => setStatus(await window.api.connections.test(c))}>Test</button>
+          <button className="btn" disabled={!valid || isTesting} onClick={runTest}>{isTesting ? 'Testing…' : 'Test'}</button>
           <div className="flex gap-2">
             <button className="btn ghost" onClick={onClose}>Cancel</button>
-            <button className="btn primary" disabled={!valid} onClick={async () => { await save({ ...c, name: c.name || c.file?.split(/[\\/]/).pop() || c.database || 'Untitled' }); onClose() }}>Save</button>
+            <button className="btn primary" disabled={!valid} onClick={async () => { const cleaned = normalize(c)
+              await save({ ...cleaned, name: cleaned.name || cleaned.file?.split(/[\\/]/).pop() || cleaned.database || 'Untitled' }); onClose() }}>Save</button>
           </div>
         </div>
       </div>
