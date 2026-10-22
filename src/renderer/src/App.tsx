@@ -24,7 +24,7 @@ export function App() {
             return (
               <div key={t.id} onClick={() => setActive(t.id)}
                 className={`group flex items-center gap-2 h-10 px-3 cursor-pointer border-t-2 whitespace-nowrap ${t.id === activeTab ? 'bg-bg border-accent text-fg' : 'border-transparent text-dim hover:text-fg'}`}>
-                <Icon size={13} /> {t.title}
+                <Icon size={13} /> {t.title}{t.kind === 'query' && t.sql !== t.savedSql && <span className="text-accent" title="Unsaved changes">●</span>}
                 <span className="text-[10px] text-dim">{conn?.name}</span>
                 <button className="btn ghost !p-0.5 opacity-0 group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); closeTab(t.id) }}><X size={12} /></button>
               </div>

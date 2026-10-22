@@ -1,15 +1,17 @@
 import { useState } from 'react'
-import { ChevronRight, Database, Eye, FileCode2, Network, Pencil, Plus, Power, Table2, Trash2 } from 'lucide-react'
-import type { ConnectionConfig } from '@shared/types'
+import { ChevronRight, Copy, Database, Eye, FileCode2, FolderClosed, Network, Pencil, Plus, Power, Table2, Trash2 } from 'lucide-react'
+import type { ConnectionConfig, SavedQuery } from '@shared/types'
 import { useStore } from '@/lib/store'
 import { ConnectionDialog } from './ConnectionDialog'
+import { NameDialog } from './NameDialog'
 
 export function Sidebar() {
-  const { connections, opened, openConnection, closeConnection, removeConnection, loadTables, openTab } = useStore()
+  const { connections, savedQueries, openSavedQuery, renameSavedQuery, removeSavedQuery, opened, openConnection, closeConnection, removeConnection, loadTables, openTab } = useStore()
   const [dialog, setDialog] = useState<ConnectionConfig | 'new' | null>(null)
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const [filter, setFilter] = useState('')
   const [tableMenu, setTableMenu] = useState<{ x: number; y: number; connId: string; schema: string; table: string } | null>(null)
+  const [renaming, setRenaming] = useState<SavedQuery | null>(null)
   const toggle = (k: string) => setCollapsed((c) => ({ ...c, [k]: !c[k] }))
 
   return (
@@ -46,8 +48,12 @@ export function Sidebar() {
               {node && !collapsed[c.id] && (
                 <div className="ml-4 border-l border-line pl-1">
                   <div className="flex gap-1 px-2 py-1">
-                    <button className="btn ghost !py-0.5 text-dim" onClick={() => openTab({ id: `q:${c.id}:${Date.now()}`, kind: 'query', connId: c.id, title: 'Query', sql: '', path: null })}><FileCode2 size={13} /> New query</button>
+                    <button className="btn ghost !py-0.5 text-dim" onClick={() => openTab({ id: `q:${c.id}:${Date.now()}`, kind: 'query', connId: c.id, title: 'Query', sql: '', savedId: null, savedSql: '' })}><FileCode2 size={13} /> New query</button>
                   </div>
+                  <SavedQueries queries={savedQueries.filter((q) => q.connId === c.id && q.name.toLowerCase().includes(filter.toLowerCase()))}
+                    isCollapsed={!!collapsed[`${c.id}:queries`]} onToggle={() => toggle(`${c.id}:queries`)}
+                    onOpen={openSavedQuery} onRename={setRenaming} onRemove={(q) => confirm(`Delete "${q.name}"?`) && removeSavedQuery(q.id)}
+                    onDuplicate={(q) => openTab({ id: `q:${c.id}:${Date.now()}`, kind: 'query', connId: c.id, title: `${q.name} copy`, sql: q.sql, savedId: null, savedSql: '' })} />
                   {node.schemas.map((sc) => {
                     const key = `${c.id}:${sc}`; const tables = node.tables[sc]
                     const shown = tables?.filter((t) => t.name.toLowerCase().includes(filter.toLowerCase()))
@@ -91,7 +97,44 @@ export function Sidebar() {
           </div>
         </>
       )}
+      {renaming && <NameDialog title="Rename query" initial={renaming.name} onSubmit={(n) => renameSavedQuery(renaming, n)} onClose={() => setRenaming(null)} />}
       {dialog && <ConnectionDialog initial={dialog === 'new' ? undefined : dialog} onClose={() => setDialog(null)} />}
     </aside>
+  )
+}
+
+interface SavedQueriesProps {
+  queries: SavedQuery[]
+  isCollapsed: boolean
+  onToggle(): void
+  onOpen(q: SavedQuery): void
+  onRename(q: SavedQuery): void
+  onDuplicate(q: SavedQuery): void
+  onRemove(q: SavedQuery): void
+}
+
+/** Collapsible "Queries" folder listing the scripts saved for one connection. */
+function SavedQueries({ queries, isCollapsed, onToggle, onOpen, onRename, onDuplicate, onRemove }: SavedQueriesProps) {
+  if (queries.length === 0) return null
+  return (
+    <div>
+      <div className="flex items-center gap-1 px-2 py-1 text-dim hover:text-fg cursor-pointer" onClick={onToggle}>
+        <ChevronRight size={12} className={`transition-transform ${isCollapsed ? '' : 'rotate-90'}`} />
+        <FolderClosed size={12} />
+        <span className="text-xs">Queries</span>
+        <span className="text-[10px] ml-1">{queries.length}</span>
+      </div>
+      {!isCollapsed && [...queries].sort((a, b) => a.name.localeCompare(b.name)).map((q) => (
+        <div key={q.id} className="group flex items-center gap-2 pl-4 pr-2 py-1 rounded-md hover:bg-raised cursor-pointer" onClick={() => onOpen(q)}>
+          <FileCode2 size={13} className="text-dim shrink-0" />
+          <span className="truncate">{q.name}</span>
+          <span className="ml-auto hidden group-hover:flex gap-0.5" onClick={(e) => e.stopPropagation()}>
+            <button className="btn ghost !p-1" title="Rename" onClick={() => onRename(q)}><Pencil size={12} /></button>
+            <button className="btn ghost !p-1" title="Duplicate" onClick={() => onDuplicate(q)}><Copy size={12} /></button>
+            <button className="btn ghost danger !p-1" title="Delete" onClick={() => onRemove(q)}><Trash2 size={12} /></button>
+          </span>
+        </div>
+      ))}
+    </div>
   )
 }
