@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Guide pour les agents (et humains) qui travaillent sur DataFinder : gestionnaire de bases de données open source (Electron + React + TypeScript). SQLite et PostgreSQL pour l'instant.
+Guide pour les agents (et humains) qui travaillent sur SQuirreL : gestionnaire de bases de données open source (Electron + React + TypeScript). SQLite et PostgreSQL pour l'instant.
 
 ## Commandes
 

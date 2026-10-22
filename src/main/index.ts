@@ -5,7 +5,7 @@ import { registerIpc } from './ipc'
 function createWindow(): void {
   const win = new BrowserWindow({
     width: 1400, height: 900, minWidth: 900, minHeight: 600,
-    backgroundColor: '#0e0f13', autoHideMenuBar: true, show: false, title: 'DataFinder',
+    backgroundColor: '#0e0f13', autoHideMenuBar: true, show: false, title: 'SQuirreL',
     webPreferences: { preload: join(__dirname, '../preload/index.js'), sandbox: true, contextIsolation: true }
   })
   win.on('ready-to-show', () => win.show())

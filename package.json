@@ -46,7 +46,7 @@
   "author": "Alexis Papagno <alexis.papagno@gmail.com>",
   "build": {
     "appId": "dev.datafinder.app",
-    "productName": "DataFinder",
+    "productName": "SQuirreL",
     "directories": {
       "output": "dist"
     },

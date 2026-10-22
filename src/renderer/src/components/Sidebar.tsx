@@ -18,7 +18,7 @@ export function Sidebar() {
     <aside className="w-72 shrink-0 bg-panel border-r border-line flex flex-col">
       <div className="flex items-center gap-2 px-4 h-12 border-b border-line">
         <Database size={16} className="text-accent" />
-        <span className="font-semibold tracking-tight">DataFinder</span>
+        <span className="font-semibold tracking-tight">SQuirreL</span>
         <button className="btn ghost !p-1 ml-auto" title="New connection" onClick={() => setDialog('new')}><Plus size={16} /></button>
       </div>
       <div className="p-2"><input className="field" placeholder="Filter tables…" value={filter} onChange={(e) => setFilter(e.target.value)} /></div>

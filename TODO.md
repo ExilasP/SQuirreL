@@ -2,7 +2,6 @@
 
 ## Config
 
-- Trouver un nom
 - Trouver un logo
 - Ajouter une licence
 

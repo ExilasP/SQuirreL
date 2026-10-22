@@ -1,4 +1,4 @@
-# DataFinder (working title)
+# SQuirreL
 
 Free, open-source database manager for Linux and Windows. SQLite and PostgreSQL for now.
 
