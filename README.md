@@ -14,5 +14,5 @@ npm run dist     # package (AppImage / NSIS, see electron-builder)
 - `src/renderer/src/views/` — Table, Query and Diagram views; each opens as a tab. The Table view hosts sub-views (Data, Columns, Foreign keys, Indexes, Triggers, DDL, DBML, ERD) in `views/table/`.
 
 ## Roadmap
-Multi-connection ✅ · table viewer ✅ · inline edit/insert/delete ✅ · SQL scripts (open/save/run) ✅ · ER diagram ✅ · table sub-views (structure, DDL, DBML, ERD) ✅
+Multi-connection ✅ · table viewer ✅ · inline edit/insert/delete ✅ · SQL scripts (run, in-app saved query library) ✅ · ER diagram ✅ · table sub-views (structure, DDL, DBML, ERD) ✅
 Next: SSH tunnels, MySQL driver, export CSV/JSON, query history, schema editing, autocomplete from schema, tests.
