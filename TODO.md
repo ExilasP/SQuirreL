@@ -9,8 +9,6 @@
 ## Feature
 
 - Pouvoir replier le sélecteur de DB
-- Pouvoir cliquer sur les colonnes dans le schéma ERD, et afficher en surbrillance les endroits où cette colonne est reliée
-- Pouvoir cliquer sur une relation dans le schéma ERD, et afficher en surbrillance les 2 clés reliées
 - Sauvegarder les scripts SQL, et pouvoir les recharger
 - Rajouter des raccourcis clavier
 - Ajouter un système de mise à jour automatique (en allant chercher sur git)
