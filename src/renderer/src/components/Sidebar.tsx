@@ -9,6 +9,7 @@ export function Sidebar() {
   const [dialog, setDialog] = useState<ConnectionConfig | 'new' | null>(null)
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const [filter, setFilter] = useState('')
+  const [tableMenu, setTableMenu] = useState<{ x: number; y: number; connId: string; schema: string; table: string } | null>(null)
   const toggle = (k: string) => setCollapsed((c) => ({ ...c, [k]: !c[k] }))
 
   return (
@@ -63,6 +64,7 @@ export function Sidebar() {
                         </div>
                         {(node.schemas.length === 1 || (!collapsed[key] && tables)) && shown?.map((t) => (
                           <div key={t.name} className="flex items-center gap-2 pl-4 pr-2 py-1 rounded-md hover:bg-raised cursor-pointer"
+                            onContextMenu={(e) => { e.preventDefault(); setTableMenu({ x: e.clientX, y: e.clientY, connId: c.id, schema: sc, table: t.name }) }}
                             onClick={() => openTab({ id: `t:${c.id}:${sc}.${t.name}`, kind: 'table', connId: c.id, schema: sc, table: t.name, title: t.name })}>
                             {t.kind === 'view' ? <Eye size={13} className="text-dim" /> : <Table2 size={13} className="text-dim" />}
                             <span className="truncate">{t.name}</span>
@@ -77,6 +79,18 @@ export function Sidebar() {
           )
         })}
       </div>
+      {tableMenu && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setTableMenu(null)} onContextMenu={(e) => { e.preventDefault(); setTableMenu(null) }} />
+          <div className="fixed z-50 bg-raised border border-line rounded-md shadow-lg py-1 min-w-40" style={{ left: tableMenu.x, top: tableMenu.y }}>
+            <button className="w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-accent-soft" onClick={() => {
+              const { connId, schema, table } = tableMenu
+              openTab({ id: `d:${connId}:${schema}.${table}`, kind: 'diagram', connId, schema, title: `ER · ${table}`, focusTable: table })
+              setTableMenu(null)
+            }}><Network size={13} /> Show ERD</button>
+          </div>
+        </>
+      )}
       {dialog && <ConnectionDialog initial={dialog === 'new' ? undefined : dialog} onClose={() => setDialog(null)} />}
     </aside>
   )

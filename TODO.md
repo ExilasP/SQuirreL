@@ -8,7 +8,6 @@
 
 ## Feature
 
-- Ajouter un diagramme ERD spécifique qui n'afficherait que les tables reliées à une table spécifique (clic droit sur une table, afficher ERD)
 - Ajouter des vues différentes pour les tables (vue data, vue colonne, vue fk, vue index, vue trigger, vue ERD spécifique, vue DBML,...)
 - Pouvoir replier le sélecteur de DB
 - Pouvoir cliquer sur les colonnes dans le schéma ERD, et afficher en surbrillance les endroits où cette colonne est reliée

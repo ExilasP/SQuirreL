@@ -4,7 +4,7 @@ import type { ConnectionConfig, TableRef } from '@shared/types'
 export type Tab =
   | { id: string; kind: 'table'; connId: string; schema: string; table: string; title: string }
   | { id: string; kind: 'query'; connId: string; title: string; sql: string; path: string | null }
-  | { id: string; kind: 'diagram'; connId: string; schema: string; title: string }
+  | { id: string; kind: 'diagram'; connId: string; schema: string; title: string; /** When set, only this table and its FK neighbours are drawn. */ focusTable?: string }
 
 interface TreeNode { schemas: string[]; tables: Record<string, TableRef[]> }
 

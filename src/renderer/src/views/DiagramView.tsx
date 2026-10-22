@@ -3,6 +3,7 @@ import { Background, Controls, Handle, MarkerType, MiniMap, Position, ReactFlow,
 import dagre from '@dagrejs/dagre'
 import { Key, Link2 } from 'lucide-react'
 import type { SchemaGraph, TableDetail } from '@shared/types'
+import { filterGraphAround } from '@/lib/graph'
 import { errMessage, useStore, type Tab } from '@/lib/store'
 
 const W = 240, ROW = 22, HEAD = 34
@@ -56,7 +57,7 @@ export function DiagramView({ tab }: { tab: Extract<Tab, { kind: 'diagram' }> })
   const [state, setState] = useState<{ nodes: Node[]; edges: Edge[] } | null>(null)
 
   useEffect(() => {
-    window.api.db.graph(tab.connId, tab.schema).then((g) => setState(layout(g))).catch((e) => setError(errMessage(e)))
+    window.api.db.graph(tab.connId, tab.schema).then((g) => setState(layout(tab.focusTable ? filterGraphAround(g, tab.focusTable) : g))).catch((e) => setError(errMessage(e)))
   }, [tab, setError])
 
   if (!state) return <div className="h-full grid place-items-center text-dim">Loading diagram…</div>
