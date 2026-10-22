@@ -110,6 +110,17 @@ export interface RowChange {
 export type ExportFormat = 'csv' | 'json'
 export interface ExportOutcome { path: string; count: number }
 
+/** A SQL script kept in the app's own library, scoped to one connection. */
+export interface SavedQuery {
+  id: string
+  /** Connection the script was written for (SQL depends on its schema). */
+  connId: string
+  name: string
+  sql: string
+  /** Epoch milliseconds of the last save. */
+  updatedAt: number
+}
+
 export interface Api {
   connections: {
     list(): Promise<ConnectionConfig[]>
@@ -136,6 +147,12 @@ export interface Api {
   export: {
     table(id: string, req: Omit<RowsRequest, 'limit' | 'offset'>, format: ExportFormat): Promise<ExportOutcome | null>
     result(name: string, format: ExportFormat, columns: string[], rows: Record<string, unknown>[]): Promise<ExportOutcome | null>
+  }
+  queries: {
+    list(): Promise<SavedQuery[]>
+    /** Inserts or replaces by `id`; returns the full updated library. */
+    save(q: SavedQuery): Promise<SavedQuery[]>
+    remove(id: string): Promise<SavedQuery[]>
   }
   scripts: {
     openFile(): Promise<{ path: string; content: string } | null>

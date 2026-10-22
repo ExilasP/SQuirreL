@@ -14,6 +14,7 @@ const api: Api = {
     rows: call('db:rows'), query: call('db:query'), update: call('db:update'), insert: call('db:insert'), remove: call('db:remove')
   },
   export: { table: call('export:table'), result: call('export:result') },
+  queries: { list: call('queries:list'), save: call('queries:save'), remove: call('queries:remove') },
   scripts: { openFile: call('scripts:openFile'), saveFile: call('scripts:saveFile') }
 } as Api
 

@@ -1,10 +1,10 @@
 import { dialog, ipcMain } from 'electron'
 import { appendFile, readFile, writeFile } from 'fs/promises'
-import type { ConnectionConfig, RowsRequest } from '@shared/types'
+import type { ConnectionConfig, RowsRequest, SavedQuery } from '@shared/types'
 import { createDriver } from './drivers'
 import type { Driver } from './drivers/types'
 import { csvHeader, csvRows, type ExportFormat } from './export'
-import { loadConnections, saveConnections } from './store'
+import { loadConnections, loadQueries, saveConnections, saveQueries } from './store'
 
 const open = new Map<string, Driver>()
 const get = (id: string): Driver => {
@@ -28,6 +28,7 @@ export function registerIpc(): void {
     await open.get(id)?.disconnect(); open.delete(id)
     const list = loadConnections().filter((c) => c.id !== id)
     saveConnections(list)
+    saveQueries(loadQueries().filter((q) => q.connId !== id))
     return list
   })
   h('connections:test', async (c: ConnectionConfig) => {
@@ -84,6 +85,20 @@ export function registerIpc(): void {
     const path = await askPath(name, format); if (!path) return null
     await writeFile(path, format === 'csv' ? csvHeader(columns) + csvRows(columns, rows) : JSON.stringify(rows, null, 2) + '\n')
     return { path, count: rows.length }
+  })
+
+  h('queries:list', () => loadQueries())
+  h('queries:save', (q: SavedQuery) => {
+    const list = loadQueries()
+    const i = list.findIndex((x) => x.id === q.id)
+    if (i >= 0) list[i] = q; else list.push(q)
+    saveQueries(list)
+    return list
+  })
+  h('queries:remove', (id: string) => {
+    const list = loadQueries().filter((q) => q.id !== id)
+    saveQueries(list)
+    return list
   })
 
   h('scripts:openFile', async () => {
