@@ -4,26 +4,26 @@
 
 - Trouver un nom
 - Trouver un logo
-- Ajouter un liscneces
+- Ajouter une licence
 
 ## Feature
 
-- Ajouter un diagram EDR spécifique qui n'afficherais que les tables reliées à une table spécifique (clique droit sur une tables, afficher EDR)
-- Ajouter des vues différentes pour les tables (vue data, vue colonne, vue fk, vue index, vue trigger, vue EDR spécifique, vue DBML,...)
-- Pouvoir replier le selecteur de db
-- Pouvoir cliquer sur les colonnes dans le schéma EDR, et afficher en surbrillance les endroit ou cette colonne est relié
-- Pouvoir cliquer sur une relation dans le schéma EDR, et afficher en surbrillance les 2 clés reliés
-- Sauvegarder les scripts SQL, et pouvoir les rechargers
-- Rajouter des shortcuts
-- Ajouter un système de mise a jour auto (en allant chercher sur le git)
-- Ajouter un wizard d'installation (windows), ou réfléchir a une autre solution
+- Ajouter un diagramme ERD spécifique qui n'afficherait que les tables reliées à une table spécifique (clic droit sur une table, afficher ERD)
+- Ajouter des vues différentes pour les tables (vue data, vue colonne, vue fk, vue index, vue trigger, vue ERD spécifique, vue DBML,...)
+- Pouvoir replier le sélecteur de DB
+- Pouvoir cliquer sur les colonnes dans le schéma ERD, et afficher en surbrillance les endroits où cette colonne est reliée
+- Pouvoir cliquer sur une relation dans le schéma ERD, et afficher en surbrillance les 2 clés reliées
+- Sauvegarder les scripts SQL, et pouvoir les recharger
+- Rajouter des raccourcis clavier
+- Ajouter un système de mise à jour automatique (en allant chercher sur git)
+- Ajouter un wizard d'installation (Windows), ou réfléchir à une autre solution
 
 ## FIX
 
 - Petit glitch visuel lors du survol d'une bdd - léger décalage vers le bas lors de l'afficage des boutons d'action de la DB
 - Editeur de script sql, la zone de text est limité qu ligne déjà écrite. Quand la souris passe sur une zone encore vide, elle a un style de souris classque, ce qui est frustrant => avoir une souris style zone de texte sur tout l'éditeur, et aller sur la dernière ligne au clique
 
-## Idée de chose à rajouter
+## Idées de choses à rajouter
 
-- Prendre en charge d'autres type de DB
-- Voir si possible de prendre en charge du Elastic Search
+- Prendre en charge d'autres types de DB
+- Voir s'il est possible de prendre en charge Elasticsearch
