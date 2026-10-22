@@ -22,6 +22,8 @@ input, textarea, .cm-editor { user-select: text; }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb { background: var(--color-line); border-radius: 6px; border: 2px solid transparent; background-clip: content-box; }
 ::-webkit-scrollbar-thumb:hover { background: #3a4050; background-clip: content-box; border: 2px solid transparent; }
+/* Default corner is white where horizontal and vertical scrollbars meet; it carries no function. */
+::-webkit-scrollbar-corner { background: transparent; }
 
 .btn { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 7px; background: var(--color-raised); border: 1px solid var(--color-line); color: var(--color-fg); cursor: pointer; transition: background .12s, border-color .12s; }
 .btn:hover { background: #232733; border-color: #343a4a; }
