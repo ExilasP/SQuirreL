@@ -1,7 +1,10 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { FileCode2, Network, Table2, X } from 'lucide-react'
 import { useStore } from '@/lib/store'
+import { useGlobalShortcuts } from '@/lib/useGlobalShortcuts'
 import { Sidebar } from '@/components/Sidebar'
+import { QuickOpen } from '@/components/QuickOpen'
+import { Welcome } from '@/components/Welcome'
 import { TableView } from '@/views/TableView'
 import { QueryView } from '@/views/QueryView'
 import { DiagramView } from '@/views/DiagramView'
@@ -13,6 +16,8 @@ export function App() {
   useEffect(() => { init() }, [init])
   useEffect(() => { if (!error) return; const t = setTimeout(() => setError(null), 8000); return () => clearTimeout(t) }, [error, setError])
   const active = tabs.find((t) => t.id === activeTab)
+  const [isQuickOpenVisible, setQuickOpenVisible] = useState(false)
+  useGlobalShortcuts({ onQuickOpen: () => setQuickOpenVisible(true) })
 
   return (
     <div className="h-full flex">
@@ -39,13 +44,10 @@ export function App() {
               {t.kind === 'diagram' && <DiagramView tab={t} />}
             </div>
           ))}
-          {!active && (
-            <div className="h-full grid place-items-center text-dim">
-              <div className="text-center"><Table2 size={36} className="mx-auto mb-3 opacity-40" /><p>Open a connection and pick a table to get started.</p></div>
-            </div>
-          )}
+          {!active && <Welcome />}
         </div>
       </main>
+      {isQuickOpenVisible && <QuickOpen onClose={() => setQuickOpenVisible(false)} />}
       {error && (
         <div className="fixed bottom-4 right-4 max-w-md bg-raised border border-danger/50 text-danger rounded-lg px-4 py-3 shadow-xl flex gap-3">
           <span className="break-words">{error}</span><button onClick={() => setError(null)}><X size={14} /></button>

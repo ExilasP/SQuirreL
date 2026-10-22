@@ -6,7 +6,7 @@ import { ConnectionDialog } from './ConnectionDialog'
 import { NameDialog } from './NameDialog'
 
 export function Sidebar() {
-  const { connections, savedQueries, openSavedQuery, renameSavedQuery, removeSavedQuery, opened, openConnection, closeConnection, removeConnection, loadTables, openTab } = useStore()
+  const { connections, savedQueries, openSavedQuery, renameSavedQuery, removeSavedQuery, opened, openConnection, closeConnection, removeConnection, loadTables, openTab, openTable, openNewQuery } = useStore()
   const [dialog, setDialog] = useState<ConnectionConfig | 'new' | null>(null)
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const [filter, setFilter] = useState('')
@@ -48,7 +48,7 @@ export function Sidebar() {
               {node && !collapsed[c.id] && (
                 <div className="ml-4 border-l border-line pl-1">
                   <div className="flex gap-1 px-2 py-1">
-                    <button className="btn ghost !py-0.5 text-dim" onClick={() => openTab({ id: `q:${c.id}:${Date.now()}`, kind: 'query', connId: c.id, title: 'Query', sql: '', savedId: null, savedSql: '' })}><FileCode2 size={13} /> New query</button>
+                    <button className="btn ghost !py-0.5 text-dim" onClick={() => openNewQuery(c.id)}><FileCode2 size={13} /> New query</button>
                   </div>
                   <SavedQueries queries={savedQueries.filter((q) => q.connId === c.id && q.name.toLowerCase().includes(filter.toLowerCase()))}
                     isCollapsed={!!collapsed[`${c.id}:queries`]} onToggle={() => toggle(`${c.id}:queries`)}
@@ -71,7 +71,7 @@ export function Sidebar() {
                         {(node.schemas.length === 1 || (!collapsed[key] && tables)) && shown?.map((t) => (
                           <div key={t.name} className="flex items-center gap-2 pl-4 pr-2 py-1 rounded-md hover:bg-raised cursor-pointer"
                             onContextMenu={(e) => { e.preventDefault(); setTableMenu({ x: e.clientX, y: e.clientY, connId: c.id, schema: sc, table: t.name }) }}
-                            onClick={() => openTab({ id: `t:${c.id}:${sc}.${t.name}`, kind: 'table', connId: c.id, schema: sc, table: t.name, title: t.name })}>
+                            onClick={() => openTable(c.id, sc, t.name)}>
                             {t.kind === 'view' ? <Eye size={13} className="text-dim" /> : <Table2 size={13} className="text-dim" />}
                             <span className="truncate">{t.name}</span>
                           </div>

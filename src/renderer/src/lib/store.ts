@@ -22,6 +22,15 @@ interface State {
   closeConnection(id: string): Promise<void>
   loadTables(connId: string, schema: string): Promise<void>
   openTab(t: Tab): void
+  openTable(connId: string, schema: string, table: string): void
+  /** Opens a blank query tab on `connId`. */
+  openNewQuery(connId: string): void
+  /** Opens a blank query on the active tab's connection, else the first open one. */
+  newQueryOnActiveConnection(): void
+  /** Activates the next (`1`) or previous (`-1`) tab, wrapping around. */
+  cycleTab(direction: 1 | -1): void
+  /** Activates the tab at `index`, if any. */
+  goToTab(index: number): void
   closeTab(id: string): void
   setActive(id: string): void
   /** Saves a query tab to the library; `name` is required the first time. */
@@ -67,6 +76,29 @@ export const useStore = create<State>((set, get) => ({
   openTab(t) {
     const exists = get().tabs.find((x) => x.id === t.id)
     set({ tabs: exists ? get().tabs : [...get().tabs, t], activeTab: t.id })
+  },
+  openTable(connId, schema, table) {
+    get().openTab({ id: `t:${connId}:${schema}.${table}`, kind: 'table', connId, schema, table, title: table })
+  },
+  openNewQuery(connId) {
+    get().openTab({ id: `q:${connId}:${Date.now()}`, kind: 'query', connId, title: 'Query', sql: '', savedId: null, savedSql: '' })
+  },
+  newQueryOnActiveConnection() {
+    const { tabs, activeTab, opened } = get()
+    const activeConnId = tabs.find((t) => t.id === activeTab)?.connId
+    const connId = activeConnId && opened[activeConnId] ? activeConnId : Object.keys(opened)[0]
+    if (connId) get().openNewQuery(connId)
+    else set({ error: 'Open a connection first to create a query.' })
+  },
+  cycleTab(direction) {
+    const { tabs, activeTab } = get()
+    if (tabs.length === 0) return
+    const current = tabs.findIndex((t) => t.id === activeTab)
+    set({ activeTab: tabs[(current + direction + tabs.length) % tabs.length].id })
+  },
+  goToTab(index) {
+    const tab = get().tabs[index]
+    if (tab) set({ activeTab: tab.id })
   },
   closeTab(id) {
     const { tabs, activeTab } = get(); const i = tabs.findIndex((t) => t.id === id)
