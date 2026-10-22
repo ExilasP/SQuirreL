@@ -1,0 +1,38 @@
+@import 'tailwindcss';
+@import '@xyflow/react/dist/style.css';
+
+@theme {
+  --color-bg: #0e0f13;
+  --color-panel: #14161c;
+  --color-raised: #1b1e26;
+  --color-line: #262a35;
+  --color-fg: #e6e8ee;
+  --color-dim: #8a90a2;
+  --color-accent: #7c8cff;
+  --color-accent-soft: #7c8cff22;
+  --color-danger: #ff6b7a;
+  --color-ok: #4fd1a5;
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Code', monospace;
+}
+
+html, body, #root { height: 100%; margin: 0; }
+body { background: var(--color-bg); color: var(--color-fg); font: 13px/1.4 var(--font-sans); overflow: hidden; user-select: none; }
+input, textarea, .cm-editor { user-select: text; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--color-line); border-radius: 6px; border: 2px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-thumb:hover { background: #3a4050; background-clip: content-box; border: 2px solid transparent; }
+
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 7px; background: var(--color-raised); border: 1px solid var(--color-line); color: var(--color-fg); cursor: pointer; transition: background .12s, border-color .12s; }
+.btn:hover { background: #232733; border-color: #343a4a; }
+.btn.primary { background: var(--color-accent); border-color: var(--color-accent); color: #0b0d14; font-weight: 600; }
+.btn.primary:hover { filter: brightness(1.1); }
+.btn.ghost { background: transparent; border-color: transparent; }
+.btn.danger:hover { color: var(--color-danger); border-color: var(--color-danger); }
+.btn:disabled { opacity: .45; pointer-events: none; }
+.field { width: 100%; padding: 6px 9px; border-radius: 7px; background: var(--color-bg); border: 1px solid var(--color-line); color: var(--color-fg); outline: none; }
+.field:focus { border-color: var(--color-accent); }
+.cm-editor { height: 100%; background: transparent !important; font-family: var(--font-mono); font-size: 13px; }
+.cm-editor.cm-focused { outline: none; }
+.react-flow__attribution { display: none; }
+.react-flow { --xy-background-color: var(--color-bg); }
