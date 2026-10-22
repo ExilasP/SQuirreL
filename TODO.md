@@ -18,11 +18,6 @@
 - Ajouter un système de mise à jour automatique (en allant chercher sur git)
 - Ajouter un wizard d'installation (Windows), ou réfléchir à une autre solution
 
-## FIX
-
-- Petit glitch visuel lors du survol d'une bdd - léger décalage vers le bas lors de l'afficage des boutons d'action de la DB
-- Editeur de script sql, la zone de text est limité qu ligne déjà écrite. Quand la souris passe sur une zone encore vide, elle a un style de souris classque, ce qui est frustrant => avoir une souris style zone de texte sur tout l'éditeur, et aller sur la dernière ligne au clique
-
 ## Idées de choses à rajouter
 
 - Prendre en charge d'autres types de DB
