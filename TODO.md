@@ -8,7 +8,7 @@
 
 ## Feature
 
-- Pouvoir replier le sélecteur de DB
+- Rajouter un système de Workspace
 - Ajouter un système de mise à jour automatique (en allant chercher sur git)
 - Ajouter un wizard d'installation (Windows), ou réfléchir à une autre solution
 
