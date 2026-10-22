@@ -125,7 +125,7 @@ function SavedQueries({ queries, isCollapsed, onToggle, onOpen, onRename, onDupl
         <span className="text-[10px] ml-1">{queries.length}</span>
       </div>
       {!isCollapsed && [...queries].sort((a, b) => a.name.localeCompare(b.name)).map((q) => (
-        <div key={q.id} className="group flex items-center gap-2 pl-4 pr-2 py-1 rounded-md hover:bg-raised cursor-pointer" onClick={() => onOpen(q)}>
+        <div key={q.id} className="group flex items-center gap-2 h-7 pl-8 pr-2 rounded-md hover:bg-raised cursor-pointer" onClick={() => onOpen(q)}>
           <FileCode2 size={13} className="text-dim shrink-0" />
           <span className="truncate">{q.name}</span>
           <span className="ml-auto hidden group-hover:flex gap-0.5" onClick={(e) => e.stopPropagation()}>
