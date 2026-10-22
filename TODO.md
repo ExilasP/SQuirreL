@@ -16,6 +16,10 @@
 - Ajouter un système de mise à jour automatique (en allant chercher sur git)
 - Ajouter un wizard d'installation (Windows), ou réfléchir à une autre solution
 
+# FIX
+
+- carré blanc en bas à droite en cas de scroll bar horizontal ⇾ analyzer utilité et corriger si pas utile
+
 ## Idées de choses à rajouter
 
 - Prendre en charge d'autres types de DB
