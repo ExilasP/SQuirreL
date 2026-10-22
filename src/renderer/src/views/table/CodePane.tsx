@@ -1,17 +1,29 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
+import CodeMirror from '@uiw/react-codemirror'
+import { sql as sqlLang, PostgreSQL, SQLite } from '@codemirror/lang-sql'
+import { oneDark } from '@codemirror/theme-one-dark'
+import { EditorView } from '@codemirror/view'
 import { Check, Copy } from 'lucide-react'
+import type { DriverId } from '@shared/types'
 
 interface Props {
   /** Source to display; `null` while loading. */
   code: string | null
   emptyMessage: string
+  /** Enables SQL syntax highlighting for this engine's dialect; plain text when omitted. */
+  sqlDriver?: DriverId
 }
 
 /** Read-only, copyable block of generated source (DDL, DBML). */
-export function CodePane({ code, emptyMessage }: Props) {
+export function CodePane({ code, emptyMessage, sqlDriver }: Props) {
   const [isCopied, setCopied] = useState(false)
   if (code === null) return <div className="h-full grid place-items-center text-dim">Loading…</div>
   if (!code.trim()) return <div className="text-dim text-center py-10">{emptyMessage}</div>
+
+  const extensions = useMemo(() => [
+    EditorView.editable.of(false),
+    ...(sqlDriver ? [sqlLang({ dialect: sqlDriver === 'postgres' ? PostgreSQL : SQLite })] : [])
+  ], [sqlDriver])
 
   const copy = async () => {
     await navigator.clipboard.writeText(code)
@@ -20,7 +32,8 @@ export function CodePane({ code, emptyMessage }: Props) {
   return (
     <div className="h-full relative">
       <button className="btn absolute top-3 right-5" onClick={copy}>{isCopied ? <Check size={14} /> : <Copy size={14} />} {isCopied ? 'Copied' : 'Copy'}</button>
-      <pre className="h-full overflow-auto p-4 font-mono text-[12.5px] whitespace-pre select-text">{code}</pre>
+      <CodeMirror value={code} theme={oneDark} height="100%" className="h-full" readOnly extensions={extensions}
+        basicSetup={{ lineNumbers: false, foldGutter: false, highlightActiveLine: false }} />
     </div>
   )
 }

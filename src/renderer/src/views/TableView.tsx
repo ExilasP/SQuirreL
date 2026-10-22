@@ -3,7 +3,8 @@ import { Code2, Database, GitBranch, Key, Link2, ListTree, Network, Zap } from '
 import type { TableDetail } from '@shared/types'
 import { Erd } from '@/components/Erd'
 import { toDbml } from '@/lib/dbml'
-import type { Tab } from '@/lib/store'
+import { formatSql } from '@/lib/formatSql'
+import { useStore, type Tab } from '@/lib/store'
 import { useAsync } from '@/lib/useAsync'
 import { CodePane } from './table/CodePane'
 import { ColumnsPane } from './table/ColumnsPane'
@@ -85,7 +86,9 @@ const Loading = () => <div className="h-full grid place-items-center text-dim">L
 
 function DdlPane({ tab }: { tab: TableTab }) {
   const { data } = useAsync(() => window.api.db.ddl(tab.connId, tab.schema, tab.table), [tab.connId, tab.schema, tab.table])
-  return <CodePane code={data} emptyMessage="No DDL available" />
+  const driver = useStore((s) => s.connections.find((c) => c.id === tab.connId)?.driver)
+  const code = useMemo(() => (data !== null && driver ? formatSql(data, driver) : data), [data, driver])
+  return <CodePane code={code} emptyMessage="No DDL available" sqlDriver={driver} />
 }
 
 function DbmlPane({ tab }: { tab: TableTab }) {
