@@ -14,8 +14,12 @@ pg.types.setTypeParser(1184, (v) => v)
 export function createPostgresDriver(cfg: ConnectionConfig): Driver {
   const pool = new pg.Pool({
     host: cfg.host, port: cfg.port ?? 5432, database: cfg.database, user: cfg.user, password: cfg.password,
-    ssl: cfg.ssl ? { rejectUnauthorized: false } : undefined, max: 4
+    ssl: cfg.ssl ? { rejectUnauthorized: false } : undefined, max: 4,
+    // Without a timeout an unreachable host hangs the connection test forever.
+    connectionTimeoutMillis: 8000
   })
+  // An idle client dropped by the server emits 'error'; unhandled, it would crash the main process.
+  pool.on('error', () => {})
 
   const run = async (sql: string, params: unknown[] = []): Promise<QueryResult> => {
     const t0 = performance.now()
