@@ -14,10 +14,6 @@
 - Ajouter un système de mise à jour automatique (en allant chercher sur git)
 - Ajouter un wizard d'installation (Windows), ou réfléchir à une autre solution
 
-# FIX
-
-- bouton copié dans la tab DDL et DBML sous la zone de texte (impossible de cliquer)
-
 ## Idées de choses à rajouter
 
 - Prendre en charge d'autres types de DB

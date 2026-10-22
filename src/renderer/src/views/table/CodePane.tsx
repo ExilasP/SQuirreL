@@ -31,7 +31,8 @@ export function CodePane({ code, emptyMessage, sqlDriver }: Props) {
   }
   return (
     <div className="h-full relative">
-      <button className="btn absolute top-3 right-5" onClick={copy}>{isCopied ? <Check size={14} /> : <Copy size={14} />} {isCopied ? 'Copied' : 'Copy'}</button>
+      {/* z-10: CodeMirror's positioned layers come later in the DOM and would otherwise cover the button. */}
+      <button className="btn absolute top-3 right-5 z-10" onClick={copy}>{isCopied ? <Check size={14} /> : <Copy size={14} />} {isCopied ? 'Copied' : 'Copy'}</button>
       <CodeMirror value={code} theme={oneDark} height="100%" className="h-full" readOnly extensions={extensions}
         basicSetup={{ lineNumbers: false, foldGutter: false, highlightActiveLine: false }} />
     </div>
