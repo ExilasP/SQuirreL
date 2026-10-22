@@ -10,6 +10,8 @@ export interface Driver {
   connect(): Promise<void>
   disconnect(): Promise<void>
   listSchemas(): Promise<string[]>
+  /** Databases the server accepts connections to; empty for single-database engines. */
+  listDatabases(): Promise<string[]>
   /** Server roles (users and groups); engines without roles return an empty list. */
   listRoles(): Promise<RoleInfo[]>
   listTables(schema: string): Promise<TableRef[]>

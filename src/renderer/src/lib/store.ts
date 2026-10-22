@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { ConnectionConfig, SavedQuery, TableRef } from '@shared/types'
+import { databaseKey, parseConnectionKey, type ConnectionConfig, type SavedQuery, type TableRef } from '@shared/types'
 
 export type Tab =
   | { id: string; kind: 'table'; connId: string; schema: string; table: string; title: string }
@@ -7,7 +7,15 @@ export type Tab =
   | { id: string; kind: 'roles'; connId: string; title: string }
   | { id: string; kind: 'diagram'; connId: string; schema: string; title: string; /** When set, only this table and its FK neighbours are drawn. */ focusTable?: string }
 
-interface TreeNode { schemas: string[]; tables: Record<string, TableRef[]> }
+interface TreeNode {
+  schemas: string[]
+  tables: Record<string, TableRef[]>
+  /** Databases of the server (PostgreSQL); only set on the node of the connection itself. */
+  databases: string[]
+}
+
+/** Whether `key` is `connId` or a database opened through it. */
+const isOfConnection = (key: string, connId: string): boolean => parseConnectionKey(key).connId === connId
 
 interface State {
   connections: ConnectionConfig[]
@@ -21,6 +29,10 @@ interface State {
   removeConnection(id: string): Promise<void>
   openConnection(id: string): Promise<void>
   closeConnection(id: string): Promise<void>
+  /** Opens another database of a PostgreSQL server and loads its schemas. */
+  openDatabase(connId: string, database: string): Promise<void>
+  /** Key under which `database` of `connId` is opened (the connection id itself for its default database). */
+  databaseKeyOf(connId: string, database: string): string
   loadTables(connId: string, schema: string): Promise<void>
   openTab(t: Tab): void
   openTable(connId: string, schema: string, table: string): void
@@ -56,21 +68,34 @@ export const useStore = create<State>((set, get) => ({
   async saveConnection(c) { set({ connections: await window.api.connections.save(c) }) },
   async removeConnection(id) {
     set({ connections: await window.api.connections.remove(id) })
-    const { opened, tabs } = get(); const { [id]: _, ...rest } = opened
-    set({ opened: rest, tabs: tabs.filter((t) => t.connId !== id), savedQueries: await window.api.queries.list() })
+    const { opened, tabs } = get()
+    set({ opened: Object.fromEntries(Object.entries(opened).filter(([key]) => !isOfConnection(key, id))), tabs: tabs.filter((t) => !isOfConnection(t.connId, id)), savedQueries: await window.api.queries.list() })
   },
   async openConnection(id) {
     try {
       await window.api.connections.open(id)
-      const schemas = await window.api.db.schemas(id)
-      set((s) => ({ opened: { ...s.opened, [id]: { schemas, tables: {} } } }))
+      const [schemas, databases] = await Promise.all([window.api.db.schemas(id), window.api.db.databases(id)])
+      set((s) => ({ opened: { ...s.opened, [id]: { schemas, databases, tables: {} } } }))
       await Promise.all(schemas.slice(0, 1).map((sc) => get().loadTables(id, sc)))
     } catch (e) { set({ error: msg(e) }) }
   },
   async closeConnection(id) {
     await window.api.connections.close(id)
-    const { opened, tabs } = get(); const { [id]: _, ...rest } = opened
-    set({ opened: rest, tabs: tabs.filter((t) => t.connId !== id) })
+    const { opened, tabs } = get()
+    set({ opened: Object.fromEntries(Object.entries(opened).filter(([key]) => !isOfConnection(key, id))), tabs: tabs.filter((t) => !isOfConnection(t.connId, id)) })
+  },
+  databaseKeyOf(connId, database) {
+    return get().connections.find((c) => c.id === connId)?.database === database ? connId : databaseKey(connId, database)
+  },
+  async openDatabase(connId, database) {
+    const key = get().databaseKeyOf(connId, database)
+    if (get().opened[key]) return
+    try {
+      await window.api.connections.open(key)
+      const schemas = await window.api.db.schemas(key)
+      set((s) => ({ opened: { ...s.opened, [key]: { schemas, databases: [], tables: {} } } }))
+      if (schemas[0]) await get().loadTables(key, schemas[0])
+    } catch (e) { set({ error: msg(e) }) }
   },
   async loadTables(connId, schema) {
     const tables = await window.api.db.tables(connId, schema)

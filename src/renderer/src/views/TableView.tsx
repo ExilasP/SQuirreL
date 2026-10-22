@@ -1,6 +1,6 @@
 import { useMemo, useState, type ComponentType } from 'react'
 import { Code2, Database, GitBranch, Key, Link2, ListTree, Network, Zap } from 'lucide-react'
-import type { TableDetail } from '@shared/types'
+import { parseConnectionKey, type TableDetail } from '@shared/types'
 import { Erd } from '@/components/Erd'
 import { toDbml } from '@/lib/dbml'
 import { formatSql } from '@/lib/formatSql'
@@ -86,7 +86,7 @@ const Loading = () => <div className="h-full grid place-items-center text-dim">L
 
 function DdlPane({ tab }: { tab: TableTab }) {
   const { data } = useAsync(() => window.api.db.ddl(tab.connId, tab.schema, tab.table), [tab.connId, tab.schema, tab.table])
-  const driver = useStore((s) => s.connections.find((c) => c.id === tab.connId)?.driver)
+  const driver = useStore((s) => s.connections.find((c) => c.id === parseConnectionKey(tab.connId).connId)?.driver)
   const code = useMemo(() => (data !== null && driver ? formatSql(data, driver) : data), [data, driver])
   return <CodePane code={code} emptyMessage="No DDL available" sqlDriver={driver} />
 }

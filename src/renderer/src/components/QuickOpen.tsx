@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Eye, FileCode2, Table2 } from 'lucide-react'
+import { parseConnectionKey } from '@shared/types'
 import { useStore } from '@/lib/store'
 
 interface Entry {
@@ -31,11 +32,12 @@ export function QuickOpen({ onClose }: { onClose(): void }) {
   const [cursor, setCursor] = useState(0)
 
   const entries = useMemo<Entry[]>(() => connections.filter((c) => opened[c.id]).flatMap((c) => [
-    ...Object.entries(opened[c.id].tables).flatMap(([schema, tables]) => tables.map((t): Entry => ({
-      key: `t:${c.id}:${schema}.${t.name}`, name: t.name, context: `${c.name} · ${schema}`, kind: t.kind === 'view' ? 'view' : 'table',
-      open: () => openTable(c.id, schema, t.name)
-    }))),
-    ...savedQueries.filter((q) => q.connId === c.id).map((q): Entry => ({
+    ...Object.entries(opened).filter(([key]) => parseConnectionKey(key).connId === c.id).flatMap(([key, node]) =>
+      Object.entries(node.tables).flatMap(([schema, tables]) => tables.map((t): Entry => ({
+        key: `t:${key}:${schema}.${t.name}`, name: t.name, context: `${c.name} · ${parseConnectionKey(key).database ?? c.database ?? ''} · ${schema}`,
+        kind: t.kind === 'view' ? 'view' : 'table', open: () => openTable(key, schema, t.name)
+      })))),
+    ...savedQueries.filter((q) => parseConnectionKey(q.connId).connId === c.id).map((q): Entry => ({
       key: `q:${q.id}`, name: q.name, context: c.name, kind: 'query', open: () => openSavedQuery(q)
     }))
   ]), [connections, opened, savedQueries, openTable, openSavedQuery])

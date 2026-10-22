@@ -1,5 +1,19 @@
 export type DriverId = 'sqlite' | 'postgres'
 
+const DATABASE_SEPARATOR = '::'
+
+/**
+ * Key of one database opened through a connection. PostgreSQL needs a separate
+ * session per database, so each one is addressed as `<connectionId>::<database>`.
+ */
+export const databaseKey = (connId: string, database: string): string => `${connId}${DATABASE_SEPARATOR}${database}`
+
+/** Splits a key built by {@link databaseKey}; a plain connection id has no `database`. */
+export function parseConnectionKey(key: string): { connId: string; database?: string } {
+  const at = key.indexOf(DATABASE_SEPARATOR)
+  return at < 0 ? { connId: key } : { connId: key.slice(0, at), database: key.slice(at + DATABASE_SEPARATOR.length) }
+}
+
 export interface ConnectionConfig {
   id: string
   name: string
@@ -150,6 +164,8 @@ export interface Api {
   }
   db: {
     schemas(id: string): Promise<string[]>
+    /** Databases of the server that can be opened; empty for engines with one database per file (SQLite). */
+    databases(id: string): Promise<string[]>
     /** Roles of the server; empty for engines without a role system (SQLite). */
     roles(id: string): Promise<RoleInfo[]>
     tables(id: string, schema: string): Promise<TableRef[]>

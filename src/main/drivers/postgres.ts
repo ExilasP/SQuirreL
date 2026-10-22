@@ -83,6 +83,10 @@ export function createPostgresDriver(cfg: ConnectionConfig): Driver {
       const r = await pool.query(`SELECT nspname FROM pg_namespace WHERE nspname NOT LIKE 'pg\\_%' AND nspname <> 'information_schema' ORDER BY (nspname = 'public') DESC, nspname`)
       return r.rows.map((x) => x.nspname)
     },
+    async listDatabases() {
+      const r = await pool.query(`SELECT datname FROM pg_database WHERE datallowconn AND NOT datistemplate ORDER BY datname`)
+      return r.rows.map((x) => x.datname)
+    },
     listRoles: () => fetchRoles(pool),
     async listTables(schema) {
       const r = await pool.query(

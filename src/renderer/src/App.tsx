@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { FileCode2, Network, Table2, Users, X } from 'lucide-react'
+import { parseConnectionKey } from '@shared/types'
 import { useStore } from '@/lib/store'
 import { useGlobalShortcuts } from '@/lib/useGlobalShortcuts'
 import { Sidebar } from '@/components/Sidebar'
@@ -26,12 +27,12 @@ export function App() {
       <main className="flex-1 min-w-0 flex flex-col">
         <div className="flex h-12 items-end border-b border-line bg-panel overflow-x-auto">
           {tabs.map((t) => {
-            const Icon = icon[t.kind]; const conn = connections.find((c) => c.id === t.connId)
+            const Icon = icon[t.kind]; const { connId, database } = parseConnectionKey(t.connId); const conn = connections.find((c) => c.id === connId)
             return (
               <div key={t.id} onClick={() => setActive(t.id)}
                 className={`group flex items-center gap-2 h-10 px-3 cursor-pointer border-t-2 whitespace-nowrap ${t.id === activeTab ? 'bg-bg border-accent text-fg' : 'border-transparent text-dim hover:text-fg'}`}>
                 <Icon size={13} /> {t.title}{t.kind === 'query' && t.sql !== t.savedSql && <span className="text-accent" title="Unsaved changes">●</span>}
-                <span className="text-[10px] text-dim">{conn?.name}</span>
+                <span className="text-[10px] text-dim">{conn?.name}{database && ` · ${database}`}</span>
                 <button className="btn ghost !p-0.5 opacity-0 group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); closeTab(t.id) }}><X size={12} /></button>
               </div>
             )

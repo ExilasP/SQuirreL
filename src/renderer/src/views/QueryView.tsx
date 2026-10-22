@@ -5,7 +5,7 @@ import { oneDark } from '@codemirror/theme-one-dark'
 import { keymap, type EditorView } from '@codemirror/view'
 import { Prec } from '@codemirror/state'
 import { Play, Save, FolderOpen, Download } from 'lucide-react'
-import type { QueryResult } from '@shared/types'
+import { parseConnectionKey, type QueryResult } from '@shared/types'
 import { errMessage, useStore, type Tab } from '@/lib/store'
 import { Grid } from '@/components/Grid'
 import { NameDialog } from '@/components/NameDialog'
@@ -13,7 +13,7 @@ import { ExportMenu } from '@/components/ExportMenu'
 
 export function QueryView({ tab }: { tab: Extract<Tab, { kind: 'query' }> }) {
   const { patchQuery, saveQueryTab, connections } = useStore()
-  const driver = connections.find((c) => c.id === tab.connId)?.driver
+  const driver = connections.find((c) => c.id === parseConnectionKey(tab.connId).connId)?.driver
   const [res, setRes] = useState<QueryResult | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [running, setRunning] = useState(false)

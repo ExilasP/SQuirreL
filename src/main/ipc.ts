@@ -1,6 +1,6 @@
 import { dialog, ipcMain } from 'electron'
 import { appendFile, readFile, writeFile } from 'fs/promises'
-import type { ConnectionConfig, RowsRequest, SavedQuery } from '@shared/types'
+import { parseConnectionKey, type ConnectionConfig, type RowsRequest, type SavedQuery } from '@shared/types'
 import { createDriver } from './drivers'
 import type { Driver } from './drivers/types'
 import { csvHeader, csvRows, type ExportFormat } from './export'
@@ -11,6 +11,13 @@ const get = (id: string): Driver => {
   const d = open.get(id)
   if (!d) throw new Error('Connection is not open')
   return d
+}
+
+/** Disconnects a connection together with every extra database opened through it. */
+async function closeAll(connId: string): Promise<void> {
+  const keys = [...open.keys()].filter((key) => parseConnectionKey(key).connId === connId)
+  await Promise.all(keys.map((key) => open.get(key)?.disconnect().catch(() => {})))
+  keys.forEach((key) => open.delete(key))
 }
 
 export function registerIpc(): void {
@@ -25,10 +32,10 @@ export function registerIpc(): void {
     return list
   })
   h('connections:remove', async (id: string) => {
-    await open.get(id)?.disconnect(); open.delete(id)
+    await closeAll(id)
     const list = loadConnections().filter((c) => c.id !== id)
     saveConnections(list)
-    saveQueries(loadQueries().filter((q) => q.connId !== id))
+    saveQueries(loadQueries().filter((q) => parseConnectionKey(q.connId).connId !== id))
     return list
   })
   h('connections:test', async (c: ConnectionConfig) => {
@@ -37,19 +44,21 @@ export function registerIpc(): void {
     catch (e) { return { ok: false, error: (e as Error).message } }
     finally { await d.disconnect().catch(() => {}) }
   })
-  h('connections:open', async (id: string) => {
-    if (open.has(id)) return
-    const cfg = loadConnections().find((c) => c.id === id)
+  h('connections:open', async (key: string) => {
+    if (open.has(key)) return
+    const { connId, database } = parseConnectionKey(key)
+    const cfg = loadConnections().find((c) => c.id === connId)
     if (!cfg) throw new Error('Unknown connection')
-    const d = createDriver(cfg); await d.connect(); open.set(id, d)
+    const d = createDriver(database ? { ...cfg, database } : cfg); await d.connect(); open.set(key, d)
   })
-  h('connections:close', async (id: string) => { await open.get(id)?.disconnect(); open.delete(id) })
+  h('connections:close', (id: string) => closeAll(id))
   h('connections:pickFile', async () => {
     const r = await dialog.showOpenDialog({ properties: ['openFile', 'promptToCreate'], filters: [{ name: 'SQLite', extensions: ['db', 'sqlite', 'sqlite3', 'db3'] }, { name: 'All', extensions: ['*'] }] })
     return r.canceled ? null : r.filePaths[0]
   })
 
   h('db:schemas', (id) => get(id).listSchemas())
+  h('db:databases', (id) => get(id).listDatabases())
   h('db:roles', (id) => get(id).listRoles())
   h('db:tables', (id, s) => get(id).listTables(s))
   h('db:describe', (id, s, t) => get(id).describeTable(s, t))
