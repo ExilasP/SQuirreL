@@ -7,13 +7,15 @@ import { Prec } from '@codemirror/state'
 import { Play, Save, FolderOpen, Download } from 'lucide-react'
 import { parseConnectionKey, type QueryResult } from '@shared/types'
 import { errMessage, useStore, type Tab } from '@/lib/store'
-import { Grid } from '@/components/Grid'
+import { useSqlNamespace } from '@/lib/sqlSchema'
+import { Grid }from '@/components/Grid'
 import { NameDialog } from '@/components/NameDialog'
 import { ExportMenu } from '@/components/ExportMenu'
 
 export function QueryView({ tab }: { tab: Extract<Tab, { kind: 'query' }> }) {
   const { patchQuery, saveQueryTab, connections } = useStore()
   const driver = connections.find((c) => c.id === parseConnectionKey(tab.connId).connId)?.driver
+  const sqlNamespace = useSqlNamespace(tab.connId)
   const [res, setRes] = useState<QueryResult | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [running, setRunning] = useState(false)
@@ -38,13 +40,13 @@ export function QueryView({ tab }: { tab: Extract<Tab, { kind: 'query' }> }) {
   saveRef.current = save
 
   const extensions = useMemo(() => [
-    sqlLang({ dialect: driver === 'postgres' ? PostgreSQL : SQLite }),
+    sqlLang({ dialect: driver === 'postgres' ? PostgreSQL : SQLite, schema: sqlNamespace.namespace, defaultSchema: sqlNamespace.defaultSchema }),
     // highest precedence: the default keymap binds Mod-Enter to "insert blank line"
     Prec.highest(keymap.of([
       { key: 'Mod-Enter', run: () => { runRef.current(); return true } },
       { key: 'Mod-s', run: () => { saveRef.current(); return true } }
     ]))
-  ], [driver])
+  ], [driver, sqlNamespace])
 
   // Clicking the empty area below the last line should behave like a text area:
   // focus the editor and put the caret at the end of the document.
