@@ -40,3 +40,38 @@ input, textarea, .cm-editor { user-select: text; }
 .react-flow__attribution { display: none; }
 .react-flow { --xy-background-color: var(--color-bg); }
 .react-flow__edge, .react-flow__edge-interaction { cursor: default; }
+
+/* Autocomplete popup: rounded, themed to match the app panels instead of the default square tooltip. */
+.cm-tooltip.cm-tooltip-autocomplete {
+  background: var(--color-raised);
+  border: 1px solid var(--color-line);
+  border-radius: 10px;
+  padding: 4px;
+  overflow: hidden;
+  box-shadow: 0 12px 32px #00000080, 0 2px 6px #00000050;
+  margin-top: 4px;
+}
+.cm-tooltip-autocomplete > ul {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  max-height: 14em;
+}
+.cm-tooltip-autocomplete > ul > li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  color: var(--color-fg);
+}
+.cm-tooltip-autocomplete > ul > li[aria-selected] {
+  background: var(--color-accent-soft);
+  color: var(--color-fg);
+}
+.cm-tooltip-autocomplete .cm-completionMatchedText {
+  color: var(--color-accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+.cm-tooltip-autocomplete .cm-completionDetail { color: var(--color-dim); margin-left: auto; font-style: normal; }
+.cm-completionIcon { opacity: 0.7; width: 1em; padding: 0; }
