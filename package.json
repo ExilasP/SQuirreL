@@ -12,6 +12,7 @@
     "build": "electron-vite build",
     "start": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.json",
+    "postinstall": "install-electron",
     "dist": "npm run build && electron-builder"
   },
   "devDependencies": {
