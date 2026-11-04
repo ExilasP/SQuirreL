@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ArrowDown, ArrowUp } from 'lucide-react'
 import { display } from '@/lib/format'
+import { useCellSelection } from '@/lib/useCellSelection'
 
 interface Props {
   columns: string[]
@@ -16,6 +17,7 @@ interface Props {
 
 export function Grid({ columns, rows, pkColumns, sort, onSort, onEdit, selected, onSelect }: Props) {
   const [editing, setEditing] = useState<{ r: number; c: string; v: string } | null>(null)
+  const { activeCell, selectCell, onKeyDown } = useCellSelection(rows)
 
   const commit = async (value: unknown) => {
     if (!editing) return
@@ -24,7 +26,8 @@ export function Grid({ columns, rows, pkColumns, sort, onSort, onEdit, selected,
   }
 
   return (
-    <div className="h-full overflow-auto font-mono text-[12.5px]">
+    // Focusable so that Ctrl+C reaches the grid once a cell has been clicked.
+    <div tabIndex={0} onKeyDown={onKeyDown} className="h-full overflow-auto font-mono text-[12.5px] outline-none">
       <table className="border-separate border-spacing-0 min-w-full">
         <thead className="sticky top-0 z-10">
           <tr>
@@ -43,10 +46,12 @@ export function Grid({ columns, rows, pkColumns, sort, onSort, onEdit, selected,
               <td className="border-b border-r border-line text-dim text-right px-2 py-1">{r + 1}</td>
               {columns.map((c) => {
                 const isEditing = editing?.r === r && editing.c === c
+                const isActive = activeCell?.row === r && activeCell.column === c
                 const v = row[c]
                 return (
-                  <td key={c} onDoubleClick={() => onEdit && setEditing({ r, c, v: v === null ? '' : display(v) })}
-                    className="border-b border-r border-line px-3 py-1 max-w-[420px] truncate whitespace-nowrap">
+                  <td key={c} onClick={() => selectCell({ row: r, column: c })}
+                    onDoubleClick={() => onEdit && setEditing({ r, c, v: v === null ? '' : display(v) })}
+                    className={`border-b border-r border-line px-3 py-1 max-w-[420px] truncate whitespace-nowrap ${isActive ? 'outline outline-1 -outline-offset-1 outline-accent' : ''}`}>
                     {isEditing ? (
                       <div className="flex gap-1 -mx-2">
                         <input autoFocus className="field !py-0.5 font-mono" value={editing.v}
