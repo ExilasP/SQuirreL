@@ -1,5 +1,7 @@
 interface Props {
   value: string
+  /** Whether the column accepts `NULL`; the NULL button is only shown then. */
+  isNullable: boolean
   onChange(value: string): void
   /** Saves `value`, or SQL `NULL` when given `null`. */
   onCommit(value: string | null): void
@@ -15,14 +17,16 @@ interface Props {
  * Has a minimum width so that narrow columns (short ids, booleans…) still
  * leave room to read and edit the value; the column widens while editing.
  */
-export function CellEditor({ value, onChange, onCommit, onCancel, onBlur }: Props) {
+export function CellEditor({ value, isNullable, onChange, onCommit, onCancel, onBlur }: Props) {
   return (
     <div className="flex gap-1 -mx-2 min-w-48">
       <input autoFocus className="field !py-0.5 font-mono flex-1 min-w-0" value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={(e) => { if (e.key === 'Enter') onCommit(value); if (e.key === 'Escape') onCancel() }}
         onBlur={onBlur} />
-      <button className="btn !py-0 !px-1.5 text-dim" onMouseDown={(e) => { e.preventDefault(); onCommit(null) }}>NULL</button>
+      {isNullable && (
+        <button className="btn !py-0 !px-1.5 text-dim" onMouseDown={(e) => { e.preventDefault(); onCommit(null) }}>NULL</button>
+      )}
     </div>
   )
 }
