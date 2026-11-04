@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { ArrowDown, ArrowUp } from 'lucide-react'
 import { display } from '@/lib/format'
+import { CellEditor } from './CellEditor'
 import { useGridSelection } from '@/lib/useGridSelection'
 import type { CellPosition } from '@/lib/gridSelection'
 
@@ -77,13 +78,8 @@ export function Grid({ columns, rows, pkColumns, sort, onSort, onEdit, selection
                     onDoubleClick={() => startEditing({ row: r, column: c })}
                     className={`border-b border-r border-line px-3 py-1 max-w-[420px] truncate whitespace-nowrap scroll-mt-8 ${isActive ? 'outline outline-1 -outline-offset-1 outline-accent' : ''}`}>
                     {isEditing ? (
-                      <div className="flex gap-1 -mx-2">
-                        <input autoFocus className="field !py-0.5 font-mono" value={editing.v}
-                          onChange={(e) => setEditing({ ...editing, v: e.target.value })}
-                          onKeyDown={(e) => { if (e.key === 'Enter') commit(editing.v); if (e.key === 'Escape') stopEditing() }}
-                          onBlur={() => setEditing(null)} />
-                        <button className="btn !py-0 !px-1.5 text-dim" onMouseDown={(e) => { e.preventDefault(); commit(null) }}>NULL</button>
-                      </div>
+                      <CellEditor value={editing.v} onChange={(v) => setEditing({ ...editing, v })}
+                        onCommit={commit} onCancel={stopEditing} onBlur={() => setEditing(null)} />
                     ) : v === null || v === undefined ? <span className="text-dim italic">NULL</span> : display(v)}
                   </td>
                 )
