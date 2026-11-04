@@ -12,11 +12,17 @@ interface Props {
   onSort?(column: string): void
   /** enables inline editing */
   onEdit?(rowIndex: number, column: string, value: unknown): Promise<void> | void
-  selected?: number | null
-  onSelect?(i: number): void
+  /** Clears the selection when it changes; see `useGridSelection`. */
+  selectionResetKey?: unknown
+  /** Receives the indices of the selected rows (or of the active cell's row) whenever they change. */
+  onSelectedRowsChange?(rows: number[]): void
 }
 
-export function Grid({ columns, rows, pkColumns, sort, onSort, onEdit, selected, onSelect }: Props) {
+/** Background of a body row depending on how it is selected. */
+const rowClassName = (isSelected: boolean, hasActiveCell: boolean): string =>
+  isSelected ? 'bg-accent-soft' : hasActiveCell ? 'bg-raised/60' : 'hover:bg-raised/60'
+
+export function Grid({ columns, rows, pkColumns, sort, onSort, onEdit, selectionResetKey, onSelectedRowsChange }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [editing, setEditing] = useState<{ r: number; c: string; v: string } | null>(null)
 
@@ -25,7 +31,9 @@ export function Grid({ columns, rows, pkColumns, sort, onSort, onEdit, selected,
     const value = rows[row][column]
     setEditing({ r: row, c: column, v: value === null ? '' : display(value) })
   }
-  const { selection, selectCell, onKeyDown } = useGridSelection({ columns, rows, containerRef, onEditCell: startEditing })
+  const { selection, selectCell, selectRow, onKeyDown } = useGridSelection({
+    columns, rows, containerRef, resetKey: selectionResetKey, onEditCell: startEditing, onSelectedRowsChange
+  })
 
   /** Leaves the editor and gives the keyboard back to the grid. */
   const stopEditing = () => { setEditing(null); containerRef.current?.focus() }
@@ -53,8 +61,12 @@ export function Grid({ columns, rows, pkColumns, sort, onSort, onEdit, selected,
         </thead>
         <tbody>
           {rows.map((row, r) => (
-            <tr key={r} data-row={r} onClick={() => onSelect?.(r)} className={selected === r ? 'bg-accent-soft' : 'hover:bg-raised/60'}>
-              <td className="border-b border-r border-line text-dim text-right px-2 py-1">{r + 1}</td>
+            <tr key={r} data-row={r} className={rowClassName(selection.selectedRows.has(r), selection.activeCell?.row === r)}>
+              <td data-col={-1} title="Click to select the row (Ctrl to add, Shift for a range)"
+                onClick={(e) => selectRow(r, { toggle: e.ctrlKey || e.metaKey, extend: e.shiftKey })}
+                className={`border-b border-r border-line text-right px-2 py-1 cursor-pointer scroll-mt-8 hover:text-fg ${selection.selectedRows.has(r) ? 'text-accent' : 'text-dim'}`}>
+                {r + 1}
+              </td>
               {columns.map((c, ci) => {
                 const isEditing = editing?.r === r && editing.c === c
                 const isActive = selection.activeCell?.row === r && selection.activeCell.column === c
