@@ -16,6 +16,7 @@ export const SHORTCUTS: readonly Shortcut[] = [
   { keys: 'Mod+Enter', label: 'Run query (or selection)' },
   { keys: 'Mod+S', label: 'Save query' },
   { keys: 'Mod+C', label: 'Copy selected cell' },
+  { keys: '↑↓←→', label: 'Move between cells (Enter to edit)' },
   { id: 'closeTab', keys: 'Mod+W', label: 'Close tab' },
   { id: 'nextTab', keys: 'Mod+Tab', label: 'Next tab' },
   { id: 'previousTab', keys: 'Mod+Shift+Tab', label: 'Previous tab' },
