@@ -2,6 +2,8 @@
 
 Free, open-source database manager for Linux and Windows. SQLite and PostgreSQL for now.
 
+> **Branch `fix/no-sqlite`**: SQLite is disabled so the app builds on Windows without Visual Studio Build Tools (better-sqlite3 is a native module). Only PostgreSQL is available here.
+
 ```bash
 npm install
 npm run dev      # development

@@ -22,7 +22,7 @@ const normalize = (c: ConnectionConfig): ConnectionConfig => ({
 
 export function ConnectionDialog({ initial, onClose }: { initial?: ConnectionConfig; onClose(): void }) {
   const save = useStore((s) => s.saveConnection)
-  const [c, setC] = useState<ConnectionConfig>(initial ?? { id: crypto.randomUUID(), name: '', driver: 'sqlite', color: COLORS[0], port: 5432, host: 'localhost' })
+  const [c, setC] = useState<ConnectionConfig>(initial ?? { id: crypto.randomUUID(), name: '', driver: 'postgres', color: COLORS[0], port: 5432, host: 'localhost' })
   const [status, setStatus] = useState<{ ok: boolean; error?: string } | null>(null)
   const [isTesting, setTesting] = useState(false)
   /** Id of the latest test run, so a slow outdated result cannot overwrite a newer one. */
@@ -48,8 +48,8 @@ export function ConnectionDialog({ initial, onClose }: { initial?: ConnectionCon
           <button className="btn ghost !p-1" onClick={onClose}><X size={16} /></button>
         </div>
         <div className="p-5 space-y-4">
-          <div className="grid grid-cols-2 gap-2">
-            {(['sqlite', 'postgres'] as DriverId[]).map((d) => (
+          <div className="grid grid-cols-1 gap-2">
+            {(['postgres'] as DriverId[]).map((d) => (
               <button key={d} onClick={() => set({ driver: d })}
                 className={`btn justify-center ${c.driver === d ? '!border-accent !bg-accent-soft' : ''}`}>
                 {d === 'sqlite' ? 'SQLite' : 'PostgreSQL'}
