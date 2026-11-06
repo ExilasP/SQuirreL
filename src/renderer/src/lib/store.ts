@@ -34,6 +34,8 @@ interface State {
   /** Key under which `database` of `connId` is opened (the connection id itself for its default database). */
   databaseKeyOf(connId: string, database: string): string
   loadTables(connId: string, schema: string): Promise<void>
+  /** Loads the tables of every schema not loaded yet, across all opened databases, so they can all be searched. */
+  loadAllTables(): Promise<void>
   openTab(t: Tab): void
   openTable(connId: string, schema: string, table: string): void
   /** Opens (or focuses) the roles and users tab of a connection. */
@@ -100,6 +102,12 @@ export const useStore = create<State>((set, get) => ({
   async loadTables(connId, schema) {
     const tables = await window.api.db.tables(connId, schema)
     set((s) => ({ opened: { ...s.opened, [connId]: { ...s.opened[connId], tables: { ...s.opened[connId].tables, [schema]: tables } } } }))
+  },
+  async loadAllTables() {
+    const missing = Object.entries(get().opened).flatMap(([key, node]) =>
+      node.schemas.filter((schema) => !node.tables[schema]).map((schema) => ({ key, schema })))
+    // One unreadable schema (e.g. no privilege) must not hide the others.
+    await Promise.allSettled(missing.map(({ key, schema }) => get().loadTables(key, schema)))
   },
   openTab(t) {
     const exists = get().tabs.find((x) => x.id === t.id)
