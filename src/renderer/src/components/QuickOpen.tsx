@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Eye, FileCode2, Table2 } from 'lucide-react'
 import { parseConnectionKey } from '@shared/types'
 import { useStore } from '@/lib/store'
@@ -16,11 +16,14 @@ interface Entry {
 const MAX_RESULTS = 50
 const icons = { table: Table2, view: Eye, query: FileCode2 }
 
-/** Ctrl+P palette: jump to any loaded table, view or saved query of an open connection. */
+/** Ctrl+P palette: jump to any table or view (in every schema) or saved query of an open connection. */
 export function QuickOpen({ onClose }: { onClose(): void }) {
-  const { connections, opened, savedQueries, openTable, openSavedQuery } = useStore()
+  const { connections, opened, savedQueries, openTable, openSavedQuery, loadAllTables } = useStore()
   const [text, setText] = useState('')
   const [cursor, setCursor] = useState(0)
+
+  // The sidebar only loads schemas as they are unfolded; search them all.
+  useEffect(() => { void loadAllTables() }, [loadAllTables])
 
   const entries = useMemo<Entry[]>(() => connections.filter((c) => opened[c.id]).flatMap((c) => [
     ...Object.entries(opened).filter(([key]) => parseConnectionKey(key).connId === c.id).flatMap(([key, node]) =>
