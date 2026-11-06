@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Eye, FileCode2, Table2 } from 'lucide-react'
 import { parseConnectionKey } from '@shared/types'
 import { useStore } from '@/lib/store'
+import { scoreMatch } from '@/lib/matchScore'
 
 interface Entry {
   key: string
@@ -14,16 +15,6 @@ interface Entry {
 
 const MAX_RESULTS = 50
 const icons = { table: Table2, view: Eye, query: FileCode2 }
-
-/** Whether the characters of `needle` appear in `haystack` in order. */
-function isSubsequence(needle: string, haystack: string): boolean {
-  let from = 0
-  for (const char of needle) {
-    from = haystack.indexOf(char, from) + 1
-    if (from === 0) return false
-  }
-  return true
-}
 
 /** Ctrl+P palette: jump to any loaded table, view or saved query of an open connection. */
 export function QuickOpen({ onClose }: { onClose(): void }) {
@@ -43,8 +34,13 @@ export function QuickOpen({ onClose }: { onClose(): void }) {
   ]), [connections, opened, savedQueries, openTable, openSavedQuery])
 
   const results = useMemo(() => {
-    const needle = text.trim().toLowerCase()
-    return entries.filter((e) => isSubsequence(needle, e.name.toLowerCase())).slice(0, MAX_RESULTS)
+    // Rank before truncating so the most probable match is never cut off.
+    return entries
+      .map((entry) => ({ entry, score: scoreMatch(text, entry.name) }))
+      .filter((scored): scored is { entry: Entry; score: number } => scored.score !== null)
+      .sort((a, b) => a.score - b.score || a.entry.name.localeCompare(b.entry.name))
+      .slice(0, MAX_RESULTS)
+      .map(({ entry }) => entry)
   }, [entries, text])
 
   const choose = (entry: Entry | undefined) => { if (entry) { entry.open(); onClose() } }
