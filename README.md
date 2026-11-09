@@ -16,5 +16,5 @@ npm run dist     # package (AppImage / NSIS, see electron-builder)
 - `src/renderer/src/views/` — Table, Query, Diagram, Roles and Types views; each opens as a tab. The Table view hosts sub-views (Data, Columns, Foreign keys, Indexes, Triggers, DDL, DBML, ERD) in `views/table/`.
 
 ## Roadmap
-Multi-connection ✅ · table viewer ✅ · inline edit/insert/delete ✅ · SQL scripts (run, in-app saved query library) ✅ · ER diagram ✅ · table sub-views (structure, DDL, DBML, ERD) ✅ · keyboard shortcuts (Ctrl+P quick open, Ctrl+N new query, Ctrl+W, Ctrl+Tab…) ✅ · grid cell / multi-row selection with keyboard navigation and Ctrl+C copy ✅ · PostgreSQL user-defined types (enum, composite, domain, range) per schema ✅
+Multi-connection ✅ · table viewer ✅ · inline edit/insert/delete ✅ · SQL scripts (run, in-app saved query library) ✅ · ER diagram ✅ · table sub-views (structure, DDL, DBML, ERD) ✅ · keyboard shortcuts (Ctrl+P quick open, Ctrl+N new query, Ctrl+W, Ctrl+Tab…) ✅ · grid cell / multi-row selection with keyboard navigation and Ctrl+C copy ✅ · PostgreSQL user-defined types (enum, composite, domain, range) per schema, with a drop-down to edit enum columns ✅
 Next: SSH tunnels, MySQL driver, export CSV/JSON, query history, schema editing, autocomplete from schema, tests.
