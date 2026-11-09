@@ -5,6 +5,7 @@ export type Tab =
   | { id: string; kind: 'table'; connId: string; schema: string; table: string; title: string }
   | { id: string; kind: 'query'; connId: string; title: string; sql: string; /** Library entry this tab edits, `null` for a scratch query. */ savedId: string | null; /** Last saved text, to detect unsaved changes. */ savedSql: string }
   | { id: string; kind: 'roles'; connId: string; title: string }
+  | { id: string; kind: 'types'; connId: string; schema: string; title: string }
   | { id: string; kind: 'diagram'; connId: string; schema: string; title: string; /** When set, only this table and its FK neighbours are drawn. */ focusTable?: string }
 
 interface TreeNode {
@@ -38,6 +39,8 @@ interface State {
   openTable(connId: string, schema: string, table: string): void
   /** Opens (or focuses) the roles and users tab of a connection. */
   openRoles(connId: string): void
+  /** Opens (or focuses) the user-defined types tab of a schema. */
+  openTypes(connId: string, schema: string): void
   /** Opens a blank query tab on `connId`. */
   openNewQuery(connId: string): void
   /** Opens a blank query on the active tab's connection, else the first open one. */
@@ -110,6 +113,9 @@ export const useStore = create<State>((set, get) => ({
   },
   openRoles(connId) {
     get().openTab({ id: `r:${connId}`, kind: 'roles', connId, title: 'Roles' })
+  },
+  openTypes(connId, schema) {
+    get().openTab({ id: `ty:${connId}:${schema}`, kind: 'types', connId, schema, title: `Types · ${schema}` })
   },
   openNewQuery(connId) {
     get().openTab({ id: `q:${connId}:${Date.now()}`, kind: 'query', connId, title: 'Query', sql: '', savedId: null, savedSql: '' })
