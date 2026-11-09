@@ -12,6 +12,11 @@ export interface GridSelectionOptions {
   /** Scrollable grid container, used to keep the selection in view. */
   containerRef: RefObject<HTMLElement | null>
   /**
+   * Scrolls a row into view vertically. Needed because a virtualized grid
+   * does not render the target row until it has been scrolled to.
+   */
+  scrollRowIntoView(row: number): void
+  /**
    * Clears the selection when it changes (page, sort, filter…). Without it
    * every new `rows` array clears it; with it, a reload keeps the active cell.
    */
@@ -42,14 +47,20 @@ const hasModifier = (event: KeyboardEvent): boolean => event.ctrlKey || event.me
  * so it never points at a different record than the one the user picked.
  */
 export function useGridSelection(options: GridSelectionOptions): GridSelectionHandle {
-  const { columns, rows, containerRef, resetKey, onEditCell, onSelectedRowsChange } = options
+  const { columns, rows, containerRef, scrollRowIntoView, resetKey, onEditCell, onSelectedRowsChange } = options
   const [selection, setSelection] = useState<GridSelection>(EMPTY_SELECTION)
   const selectedRows = useMemo(() => selectedRowIndices(selection), [selection])
 
   useEffect(() => setSelection(EMPTY_SELECTION), [resetKey ?? rows])
   useEffect(() => setSelection((current) => retainActiveCell(current, rows.length)), [rows])
   useEffect(() => onSelectedRowsChange?.(selectedRows), [selectedRows, onSelectedRowsChange])
-  useEffect(() => scrollSelectionIntoView(containerRef.current, selection, columns), [selection, columns, containerRef])
+  useEffect(() => {
+    const row = selection.activeCell?.row ?? selection.leadRow
+    if (row !== null) scrollRowIntoView(row)
+    if (selection.activeCell) scrollColumnIntoView(containerRef.current, columns.indexOf(selection.activeCell.column))
+    // Only a selection change should scroll, not a re-created callback (e.g. after a row height measure).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selection])
 
   const copySelection = (event: KeyboardEvent<HTMLElement>) => {
     const text = selectionToText(selection, rows, columns)
@@ -88,13 +99,15 @@ export function useGridSelection(options: GridSelectionOptions): GridSelectionHa
   }
 }
 
-/** Scrolls the active cell, or the lead row's `#` cell, into view. */
-function scrollSelectionIntoView(container: HTMLElement | null, selection: GridSelection, columns: string[]): void {
-  if (!container) return
-  const { activeCell, leadRow } = selection
-  const selector = activeCell
-    ? `[data-row="${activeCell.row}"] [data-col="${columns.indexOf(activeCell.column)}"]`
-    : leadRow !== null ? `[data-row="${leadRow}"] [data-col="-1"]` : null
-  if (!selector) return
-  container.querySelector(selector)?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+/**
+ * Scrolls the container horizontally just enough to show a column. Uses the
+ * header cell, which is always rendered, unlike the body cells of a virtualized grid.
+ */
+function scrollColumnIntoView(container: HTMLElement | null, columnIndex: number): void {
+  const header = container?.querySelector<HTMLElement>(`thead [data-col="${columnIndex}"]`)
+  if (!container || !header) return
+  const left = header.offsetLeft
+  const right = left + header.offsetWidth
+  if (left < container.scrollLeft) container.scrollLeft = left
+  else if (right > container.scrollLeft + container.clientWidth) container.scrollLeft = right - container.clientWidth
 }
