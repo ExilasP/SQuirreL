@@ -69,8 +69,8 @@ export function useGridSelection(options: GridSelectionOptions): GridSelectionHa
   }
 
   const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
-    // The inline editor input keeps its native keyboard behaviour.
-    if (event.target instanceof HTMLInputElement) return
+    // The inline editor (text input or enum select) keeps its native keyboard behaviour.
+    if (event.target instanceof HTMLInputElement || event.target instanceof HTMLSelectElement) return
     if (matchesShortcut(event.nativeEvent, 'Mod+C')) { copySelection(event); return }
     if (matchesShortcut(event.nativeEvent, 'Mod+A')) { event.preventDefault(); setSelection(selectAllRows(rows.length)); return }
     if (event.key === 'Escape') { setSelection(EMPTY_SELECTION); return }

@@ -25,6 +25,7 @@ export function DataPane({ tab }: { tab: Extract<Tab, { kind: 'table' }> }) {
   const total = res?.total ?? 0
   const pks = useMemo(() => new Set(detail?.columns.filter((c) => c.primaryKey).map((c) => c.name)), [detail])
   const nullableColumns = useMemo(() => new Set(detail?.columns.filter((c) => c.nullable).map((c) => c.name)), [detail])
+  const enumValuesByColumn = useMemo(() => new Map(detail?.columns.flatMap((c) => (c.enumValues ? [[c.name, c.enumValues] as const] : []))), [detail])
   const editable = detail?.kind === 'table'
 
   const load = useCallback(async () => {
@@ -92,7 +93,7 @@ export function DataPane({ tab }: { tab: Extract<Tab, { kind: 'table' }> }) {
         </div>
       </div>
       <div className="flex-1 min-h-0">
-        {res && <Grid columns={res.columns} rows={res.rows} pkColumns={pks} nullableColumns={nullableColumns} sort={sort} onSelectedRowsChange={setSelectedRows}
+        {res && <Grid columns={res.columns} rows={res.rows} pkColumns={pks} nullableColumns={nullableColumns} enumValuesByColumn={enumValuesByColumn} sort={sort} onSelectedRowsChange={setSelectedRows}
           selectionResetKey={`${page}|${sort?.column}|${sort?.dir}|${applied}`}
           onSort={(c) => { setPage(0); setSort(sort?.column === c ? (sort.dir === 'asc' ? { column: c, dir: 'desc' } : null) : { column: c, dir: 'asc' }) }}
           onEdit={editable ? edit : undefined} />}
