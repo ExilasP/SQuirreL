@@ -73,6 +73,7 @@ export function createSqliteDriver(cfg: ConnectionConfig): Driver {
     async disconnect() { db?.close() },
     async listSchemas() { return ['main'] },
     async listRoles() { return [] },
+    async listTypes() { return [] },
     async listDatabases() { return [] },
     async listTables() {
       return (db.prepare(`SELECT name, type FROM sqlite_master WHERE type IN ('table','view') AND name NOT LIKE 'sqlite_%' ORDER BY name`).all() as any[])
