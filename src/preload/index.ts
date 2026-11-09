@@ -9,7 +9,7 @@ const api: Api = {
     test: call('connections:test'), open: call('connections:open'), close: call('connections:close'), pickFile: call('connections:pickFile')
   },
   db: {
-    schemas: call('db:schemas'), roles: call('db:roles'), databases: call('db:databases'), tables: call('db:tables'), describe: call('db:describe'), graph: call('db:graph'),
+    schemas: call('db:schemas'), roles: call('db:roles'), databases: call('db:databases'), tables: call('db:tables'), types: call('db:types'), describe: call('db:describe'), graph: call('db:graph'),
     triggers: call('db:triggers'), ddl: call('db:ddl'),
     rows: call('db:rows'), query: call('db:query'), update: call('db:update'), insert: call('db:insert'), remove: call('db:remove')
   },

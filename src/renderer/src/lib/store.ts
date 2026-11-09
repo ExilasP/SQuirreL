@@ -5,6 +5,7 @@ export type Tab =
   | { id: string; kind: 'table'; connId: string; schema: string; table: string; title: string }
   | { id: string; kind: 'query'; connId: string; title: string; sql: string; /** Library entry this tab edits, `null` for a scratch query. */ savedId: string | null; /** Last saved text, to detect unsaved changes. */ savedSql: string }
   | { id: string; kind: 'roles'; connId: string; title: string }
+  | { id: string; kind: 'types'; connId: string; schema: string; title: string }
   | { id: string; kind: 'diagram'; connId: string; schema: string; title: string; /** When set, only this table and its FK neighbours are drawn. */ focusTable?: string }
 
 interface TreeNode {
@@ -34,10 +35,14 @@ interface State {
   /** Key under which `database` of `connId` is opened (the connection id itself for its default database). */
   databaseKeyOf(connId: string, database: string): string
   loadTables(connId: string, schema: string): Promise<void>
+  /** Loads the tables of every schema not loaded yet, across all opened databases, so they can all be searched. */
+  loadAllTables(): Promise<void>
   openTab(t: Tab): void
   openTable(connId: string, schema: string, table: string): void
   /** Opens (or focuses) the roles and users tab of a connection. */
   openRoles(connId: string): void
+  /** Opens (or focuses) the user-defined types tab of a schema. */
+  openTypes(connId: string, schema: string): void
   /** Opens a blank query tab on `connId`. */
   openNewQuery(connId: string): void
   /** Opens a blank query on the active tab's connection, else the first open one. */
@@ -101,6 +106,12 @@ export const useStore = create<State>((set, get) => ({
     const tables = await window.api.db.tables(connId, schema)
     set((s) => ({ opened: { ...s.opened, [connId]: { ...s.opened[connId], tables: { ...s.opened[connId].tables, [schema]: tables } } } }))
   },
+  async loadAllTables() {
+    const missing = Object.entries(get().opened).flatMap(([key, node]) =>
+      node.schemas.filter((schema) => !node.tables[schema]).map((schema) => ({ key, schema })))
+    // One unreadable schema (e.g. no privilege) must not hide the others.
+    await Promise.allSettled(missing.map(({ key, schema }) => get().loadTables(key, schema)))
+  },
   openTab(t) {
     const exists = get().tabs.find((x) => x.id === t.id)
     set({ tabs: exists ? get().tabs : [...get().tabs, t], activeTab: t.id })
@@ -110,6 +121,9 @@ export const useStore = create<State>((set, get) => ({
   },
   openRoles(connId) {
     get().openTab({ id: `r:${connId}`, kind: 'roles', connId, title: 'Roles' })
+  },
+  openTypes(connId, schema) {
+    get().openTab({ id: `ty:${connId}:${schema}`, kind: 'types', connId, schema, title: `Types · ${schema}` })
   },
   openNewQuery(connId) {
     get().openTab({ id: `q:${connId}:${Date.now()}`, kind: 'query', connId, title: 'Query', sql: '', savedId: null, savedSql: '' })

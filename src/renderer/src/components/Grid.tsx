@@ -12,6 +12,8 @@ interface Props {
   pkColumns?: Set<string>
   /** Columns that accept `NULL`; the editor offers a NULL button only for these. */
   nullableColumns?: Set<string>
+  /** Allowed values of enum columns, keyed by column name; edited with a drop-down. */
+  enumValuesByColumn?: Map<string, string[]>
   sort?: { column: string; dir: 'asc' | 'desc' } | null
   onSort?(column: string): void
   /** enables inline editing */
@@ -26,7 +28,7 @@ interface Props {
 const rowClassName = (isSelected: boolean, hasActiveCell: boolean): string =>
   isSelected ? 'bg-accent-soft' : hasActiveCell ? 'bg-raised/60' : 'hover:bg-raised/60'
 
-export function Grid({ columns, rows, pkColumns, nullableColumns, sort, onSort, onEdit, selectionResetKey, onSelectedRowsChange }: Props) {
+export function Grid({ columns, rows, pkColumns, nullableColumns, enumValuesByColumn, sort, onSort, onEdit, selectionResetKey, onSelectedRowsChange }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const headerRef = useRef<HTMLTableSectionElement>(null)
   const [editing, setEditing] = useState<EditingCell | null>(null)
@@ -72,7 +74,7 @@ export function Grid({ columns, rows, pkColumns, nullableColumns, sort, onSort, 
             const r = virtualRows.start + offset
             const rowEditing = editing?.r === r ? editing : null
             return (
-              <GridRow key={r} row={row} rowIndex={r} columns={columns} nullableColumns={nullableColumns}
+              <GridRow key={r} row={row} rowIndex={r} columns={columns} nullableColumns={nullableColumns} enumValuesByColumn={enumValuesByColumn}
                 isSelected={selection.selectedRows.has(r)}
                 activeColumn={selection.activeCell?.row === r ? selection.activeCell.column : null}
                 editing={rowEditing}
@@ -99,6 +101,7 @@ interface GridRowProps {
   rowIndex: number
   columns: string[]
   nullableColumns?: Set<string>
+  enumValuesByColumn?: Map<string, string[]>
   isSelected: boolean
   /** Column of the active cell when it lies in this row. */
   activeColumn: string | null
@@ -116,7 +119,7 @@ interface GridRowProps {
 
 /** One body row of the grid: the `#` cell followed by the value cells. */
 function GridRow(props: GridRowProps) {
-  const { row, rowIndex: r, columns, nullableColumns, isSelected, activeColumn, editing, rowRef } = props
+  const { row, rowIndex: r, columns, nullableColumns, enumValuesByColumn, isSelected, activeColumn, editing, rowRef } = props
   return (
     <tr data-row={r} ref={rowRef} className={rowClassName(isSelected, activeColumn !== null)}>
       <td data-col={-1} title="Click to select the row (Ctrl to add, Shift for a range)"
@@ -131,7 +134,7 @@ function GridRow(props: GridRowProps) {
             onDoubleClick={() => props.onStartEditing({ row: r, column: c })}
             className={`border-b border-r border-line px-3 py-1 max-w-[420px] truncate whitespace-nowrap ${activeColumn === c ? 'outline outline-1 -outline-offset-1 outline-accent' : ''}`}>
             {editing?.c === c ? (
-              <CellEditor value={editing.v} isNullable={nullableColumns?.has(c) ?? false} onChange={props.onEditValueChange}
+              <CellEditor value={editing.v} enumValues={enumValuesByColumn?.get(c)} isNullable={nullableColumns?.has(c) ?? false} onChange={props.onEditValueChange}
                 onCommit={props.onCommit} onCancel={props.onCancelEditing} onBlur={props.onBlurEditor} />
             ) : v === null || v === undefined ? <span className="text-dim italic">NULL</span> : display(v)}
           </td>

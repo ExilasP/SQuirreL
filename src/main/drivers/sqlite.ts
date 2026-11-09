@@ -28,7 +28,7 @@ export function createSqliteDriver(cfg: ConnectionConfig): Driver {
     for (const f of fks) grouped.set(f.id, [...(grouped.get(f.id) ?? []), f])
     return {
       schema: 'main', name: table, kind,
-      columns: cols.map((c) => ({ name: c.name, type: c.type || 'ANY', nullable: !c.notnull && !c.pk, defaultValue: c.dflt_value, primaryKey: c.pk > 0, comment: null })),
+      columns: cols.map((c) => ({ name: c.name, type: c.type || 'ANY', nullable: !c.notnull && !c.pk, defaultValue: c.dflt_value, primaryKey: c.pk > 0, comment: null, enumValues: null })),
       foreignKeys: [...grouped.entries()].map(([id, g]) => ({
         name: `fk_${table}_${id}`, columns: g.map((x) => x.from), refSchema: 'main', refTable: g[0].table, refColumns: g.map((x) => x.to),
         onUpdate: g[0].on_update, onDelete: g[0].on_delete
@@ -73,6 +73,7 @@ export function createSqliteDriver(cfg: ConnectionConfig): Driver {
     async disconnect() { db?.close() },
     async listSchemas() { return ['main'] },
     async listRoles() { return [] },
+    async listTypes() { return [] },
     async listDatabases() { return [] },
     async listTables() {
       return (db.prepare(`SELECT name, type FROM sqlite_master WHERE type IN ('table','view') AND name NOT LIKE 'sqlite_%' ORDER BY name`).all() as any[])

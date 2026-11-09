@@ -1,7 +1,34 @@
 {
   "name": "datafinder",
   "version": "0.1.0",
-  "description": "Open-source database manager",
+  "description": "Free, open-source database manager and SQL client for SQLite and PostgreSQL (Linux, Windows)",
+  "keywords": [
+    "database",
+    "database-manager",
+    "database-client",
+    "sql-client",
+    "sql-editor",
+    "gui",
+    "sqlite",
+    "postgresql",
+    "postgres",
+    "er-diagram",
+    "electron",
+    "react",
+    "typescript",
+    "desktop-app",
+    "linux",
+    "windows",
+    "dbeaver-alternative"
+  ],
+  "homepage": "https://github.com/ExilasP/SQuirreL#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ExilasP/SQuirreL.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ExilasP/SQuirreL/issues"
+  },
   "main": "./out/main/index.js",
   "license": "MIT",
   "scripts": {

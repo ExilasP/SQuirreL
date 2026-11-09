@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { FileCode2, Network, Table2, Users, X } from 'lucide-react'
+import { FileCode2, Network, Shapes, Table2, Users, X } from 'lucide-react'
 import { parseConnectionKey } from '@shared/types'
 import { useStore } from '@/lib/store'
 import { useGlobalShortcuts } from '@/lib/useGlobalShortcuts'
@@ -10,8 +10,9 @@ import { TableView } from '@/views/TableView'
 import { QueryView } from '@/views/QueryView'
 import { DiagramView } from '@/views/DiagramView'
 import { RolesView } from '@/views/RolesView'
+import { TypesView } from '@/views/TypesView'
 
-const icon = { table: Table2, query: FileCode2, diagram: Network, roles: Users }
+const icon = { table: Table2, query: FileCode2, diagram: Network, roles: Users, types: Shapes }
 
 export function App() {
   const { tabs, activeTab, setActive, closeTab, init, error, setError, connections } = useStore()
@@ -45,6 +46,7 @@ export function App() {
               {t.kind === 'query' && <QueryView tab={t} />}
               {t.kind === 'diagram' && <DiagramView tab={t} />}
               {t.kind === 'roles' && <RolesView tab={t} />}
+              {t.kind === 'types' && <TypesView tab={t} />}
             </div>
           ))}
           {!active && <Welcome />}
