@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronRight, Copy, Database, Eye, FileCode2, FolderClosed, Network, Pencil, Plus, Power, Table2, Trash2, Users } from 'lucide-react'
+import { ChevronRight, Copy, Database, Eye, FileCode2, FolderClosed, Network, Pencil, Plus, Power, Shapes, Table2, Trash2, Users } from 'lucide-react'
 import { parseConnectionKey, type ConnectionConfig, type SavedQuery } from '@shared/types'
 import { useStore } from '@/lib/store'
 import { ConnectionDialog } from './ConnectionDialog'
@@ -70,7 +70,7 @@ export function Sidebar() {
                           {isDbUnfolded && (
                             <>
                               <TreeRow depth={2} icon={FileCode2} label="New query" onClick={() => openNewQuery(key)} />
-                              <DatabaseTree connKey={key} depth={2} showSchemas filter={filter} onTableMenu={setTableMenu} />
+                              <DatabaseTree connKey={key} depth={2} showSchemas hasTypes filter={filter} onTableMenu={setTableMenu} />
                             </>
                           )}
                         </div>
@@ -145,13 +145,15 @@ interface DatabaseTreeProps {
   depth: number
   /** Group tables under a folder per schema; SQLite has a single implicit one. */
   showSchemas: boolean
+  /** Adds a "Types" entry per schema, for engines with user-defined types (PostgreSQL). */
+  hasTypes?: boolean
   filter: string
   onTableMenu(target: TableMenuTarget): void
 }
 
 /** Schemas of one opened database, each folding its diagram entry and its tables. */
-function DatabaseTree({ connKey, depth, showSchemas, filter, onTableMenu }: DatabaseTreeProps) {
-  const { opened, loadTables, openTab, openTable } = useStore()
+function DatabaseTree({ connKey, depth, showSchemas, hasTypes, filter, onTableMenu }: DatabaseTreeProps) {
+  const { opened, loadTables, openTab, openTable, openTypes } = useStore()
   const [unfoldedMap, setUnfolded] = useState<Record<string, boolean>>({})
   const node = opened[connKey]
   if (!node) return null
@@ -173,6 +175,7 @@ function DatabaseTree({ connKey, depth, showSchemas, filter, onTableMenu }: Data
           <>
             <TreeRow depth={childDepth} icon={Network} label="Diagram"
               onClick={() => openTab({ id: `d:${connKey}:${schema}`, kind: 'diagram', connId: connKey, schema, title: `ER · ${schema}` })} />
+            {hasTypes && <TreeRow depth={childDepth} icon={Shapes} label="Types" onClick={() => openTypes(connKey, schema)} />}
             {shown?.map((t) => (
               <TreeRow key={t.name} depth={childDepth} icon={t.kind === 'view' ? Eye : Table2} label={t.name}
                 onClick={() => openTable(connKey, schema, t.name)}

@@ -11,6 +11,8 @@ interface Props {
   pkColumns?: Set<string>
   /** Columns that accept `NULL`; the editor offers a NULL button only for these. */
   nullableColumns?: Set<string>
+  /** Allowed values of enum columns, keyed by column name; edited with a drop-down. */
+  enumValuesByColumn?: Map<string, string[]>
   sort?: { column: string; dir: 'asc' | 'desc' } | null
   onSort?(column: string): void
   /** enables inline editing */
@@ -25,7 +27,7 @@ interface Props {
 const rowClassName = (isSelected: boolean, hasActiveCell: boolean): string =>
   isSelected ? 'bg-accent-soft' : hasActiveCell ? 'bg-raised/60' : 'hover:bg-raised/60'
 
-export function Grid({ columns, rows, pkColumns, nullableColumns, sort, onSort, onEdit, selectionResetKey, onSelectedRowsChange }: Props) {
+export function Grid({ columns, rows, pkColumns, nullableColumns, enumValuesByColumn, sort, onSort, onEdit, selectionResetKey, onSelectedRowsChange }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [editing, setEditing] = useState<{ r: number; c: string; v: string } | null>(null)
 
@@ -80,7 +82,7 @@ export function Grid({ columns, rows, pkColumns, nullableColumns, sort, onSort, 
                     onDoubleClick={() => startEditing({ row: r, column: c })}
                     className={`border-b border-r border-line px-3 py-1 max-w-[420px] truncate whitespace-nowrap scroll-mt-8 ${isActive ? 'outline outline-1 -outline-offset-1 outline-accent' : ''}`}>
                     {isEditing ? (
-                      <CellEditor value={editing.v} isNullable={nullableColumns?.has(c) ?? false} onChange={(v) => setEditing({ ...editing, v })}
+                      <CellEditor value={editing.v} enumValues={enumValuesByColumn?.get(c)} isNullable={nullableColumns?.has(c) ?? false} onChange={(v) => setEditing({ ...editing, v })}
                         onCommit={commit} onCancel={stopEditing} onBlur={() => setEditing(null)} />
                     ) : v === null || v === undefined ? <span className="text-dim italic">NULL</span> : display(v)}
                   </td>
