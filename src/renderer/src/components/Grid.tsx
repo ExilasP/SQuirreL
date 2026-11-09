@@ -3,7 +3,8 @@ import { ArrowDown, ArrowUp } from 'lucide-react'
 import { display } from '@/lib/format'
 import { CellEditor } from './CellEditor'
 import { useGridSelection } from '@/lib/useGridSelection'
-import type { CellPosition } from '@/lib/gridSelection'
+import { useVirtualRows } from '@/lib/useVirtualRows'
+import type { CellPosition, RowSelectMode } from '@/lib/gridSelection'
 
 interface Props {
   columns: string[]
@@ -27,15 +28,18 @@ const rowClassName = (isSelected: boolean, hasActiveCell: boolean): string =>
 
 export function Grid({ columns, rows, pkColumns, nullableColumns, sort, onSort, onEdit, selectionResetKey, onSelectedRowsChange }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const [editing, setEditing] = useState<{ r: number; c: string; v: string } | null>(null)
+  const headerRef = useRef<HTMLTableSectionElement>(null)
+  const [editing, setEditing] = useState<EditingCell | null>(null)
 
   const startEditing = ({ row, column }: CellPosition) => {
     if (!onEdit) return
     const value = rows[row][column]
     setEditing({ r: row, c: column, v: value === null ? '' : display(value) })
   }
+  const virtualRows = useVirtualRows({ containerRef, rowCount: rows.length })
+  const scrollRowIntoView = (row: number) => virtualRows.scrollRowIntoView(row, headerRef.current?.offsetHeight ?? 0)
   const { selection, selectCell, selectRow, onKeyDown } = useGridSelection({
-    columns, rows, containerRef, resetKey: selectionResetKey, onEditCell: startEditing, onSelectedRowsChange
+    columns, rows, containerRef, scrollRowIntoView, resetKey: selectionResetKey, onEditCell: startEditing, onSelectedRowsChange
   })
 
   /** Leaves the editor and gives the keyboard back to the grid. */
@@ -51,11 +55,11 @@ export function Grid({ columns, rows, pkColumns, nullableColumns, sort, onSort, 
     // Focusable so that keyboard navigation and Ctrl+C reach the grid once a cell has been clicked.
     <div ref={containerRef} tabIndex={0} onKeyDown={onKeyDown} className="h-full overflow-auto font-mono text-[12.5px] outline-none">
       <table className="border-separate border-spacing-0 min-w-full">
-        <thead className="sticky top-0 z-10">
+        <thead ref={headerRef} className="sticky top-0 z-10">
           <tr>
-            <th className="w-10 bg-panel border-b border-r border-line text-dim text-right px-2 py-1.5 font-normal">#</th>
-            {columns.map((c) => (
-              <th key={c} onClick={() => onSort?.(c)} className="bg-panel border-b border-r border-line px-3 py-1.5 text-left font-sans font-medium whitespace-nowrap cursor-pointer hover:bg-raised">
+            <th data-col={-1} className="w-10 bg-panel border-b border-r border-line text-dim text-right px-2 py-1.5 font-normal">#</th>
+            {columns.map((c, ci) => (
+              <th key={c} data-col={ci} onClick={() => onSort?.(c)} className="bg-panel border-b border-r border-line px-3 py-1.5 text-left font-sans font-medium whitespace-nowrap cursor-pointer hover:bg-raised">
                 <span className={pkColumns?.has(c) ? 'text-accent' : ''}>{c}</span>
                 {sort?.column === c && (sort.dir === 'asc' ? <ArrowUp size={11} className="inline ml-1" /> : <ArrowDown size={11} className="inline ml-1" />)}
               </th>
@@ -63,34 +67,82 @@ export function Grid({ columns, rows, pkColumns, nullableColumns, sort, onSort, 
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, r) => (
-            <tr key={r} data-row={r} className={rowClassName(selection.selectedRows.has(r), selection.activeCell?.row === r)}>
-              <td data-col={-1} title="Click to select the row (Ctrl to add, Shift for a range)"
-                onClick={(e) => selectRow(r, { toggle: e.ctrlKey || e.metaKey, extend: e.shiftKey })}
-                className={`border-b border-r border-line text-right px-2 py-1 cursor-pointer scroll-mt-8 hover:text-fg ${selection.selectedRows.has(r) ? 'text-accent' : 'text-dim'}`}>
-                {r + 1}
-              </td>
-              {columns.map((c, ci) => {
-                const isEditing = editing?.r === r && editing.c === c
-                const isActive = selection.activeCell?.row === r && selection.activeCell.column === c
-                const v = row[c]
-                return (
-                  // scroll-mt keeps keyboard-selected cells clear of the sticky header.
-                  <td key={c} data-col={ci} onClick={() => selectCell({ row: r, column: c })}
-                    onDoubleClick={() => startEditing({ row: r, column: c })}
-                    className={`border-b border-r border-line px-3 py-1 max-w-[420px] truncate whitespace-nowrap scroll-mt-8 ${isActive ? 'outline outline-1 -outline-offset-1 outline-accent' : ''}`}>
-                    {isEditing ? (
-                      <CellEditor value={editing.v} isNullable={nullableColumns?.has(c) ?? false} onChange={(v) => setEditing({ ...editing, v })}
-                        onCommit={commit} onCancel={stopEditing} onBlur={() => setEditing(null)} />
-                    ) : v === null || v === undefined ? <span className="text-dim italic">NULL</span> : display(v)}
-                  </td>
-                )
-              })}
-            </tr>
-          ))}
+          <SpacerRow height={virtualRows.paddingTop} columnCount={columns.length + 1} />
+          {rows.slice(virtualRows.start, virtualRows.end).map((row, offset) => {
+            const r = virtualRows.start + offset
+            const rowEditing = editing?.r === r ? editing : null
+            return (
+              <GridRow key={r} row={row} rowIndex={r} columns={columns} nullableColumns={nullableColumns}
+                isSelected={selection.selectedRows.has(r)}
+                activeColumn={selection.activeCell?.row === r ? selection.activeCell.column : null}
+                editing={rowEditing}
+                // The first rendered row gives the height of all rows, unless its editor makes it taller.
+                rowRef={offset === 0 && !rowEditing ? virtualRows.measureRow : undefined}
+                onSelectRow={selectRow} onSelectCell={selectCell} onStartEditing={startEditing}
+                onEditValueChange={(v) => setEditing({ ...editing!, v })} onCommit={commit} onCancelEditing={stopEditing}
+                onBlurEditor={() => setEditing(null)} />
+            )
+          })}
+          <SpacerRow height={virtualRows.paddingBottom} columnCount={columns.length + 1} />
         </tbody>
       </table>
       {rows.length === 0 && <div className="text-dim text-center py-10 font-sans">No rows</div>}
     </div>
   )
+}
+
+/** Value being typed in the inline editor of a cell. */
+interface EditingCell { r: number; c: string; v: string }
+
+interface GridRowProps {
+  row: Record<string, unknown>
+  rowIndex: number
+  columns: string[]
+  nullableColumns?: Set<string>
+  isSelected: boolean
+  /** Column of the active cell when it lies in this row. */
+  activeColumn: string | null
+  /** Editor state when a cell of this row is being edited. */
+  editing: EditingCell | null
+  rowRef?(element: HTMLElement | null): void
+  onSelectRow(row: number, mode: RowSelectMode): void
+  onSelectCell(cell: CellPosition): void
+  onStartEditing(cell: CellPosition): void
+  onEditValueChange(value: string): void
+  onCommit(value: unknown): void
+  onCancelEditing(): void
+  onBlurEditor(): void
+}
+
+/** One body row of the grid: the `#` cell followed by the value cells. */
+function GridRow(props: GridRowProps) {
+  const { row, rowIndex: r, columns, nullableColumns, isSelected, activeColumn, editing, rowRef } = props
+  return (
+    <tr data-row={r} ref={rowRef} className={rowClassName(isSelected, activeColumn !== null)}>
+      <td data-col={-1} title="Click to select the row (Ctrl to add, Shift for a range)"
+        onClick={(e) => props.onSelectRow(r, { toggle: e.ctrlKey || e.metaKey, extend: e.shiftKey })}
+        className={`border-b border-r border-line text-right px-2 py-1 cursor-pointer hover:text-fg ${isSelected ? 'text-accent' : 'text-dim'}`}>
+        {r + 1}
+      </td>
+      {columns.map((c, ci) => {
+        const v = row[c]
+        return (
+          <td key={c} data-col={ci} onClick={() => props.onSelectCell({ row: r, column: c })}
+            onDoubleClick={() => props.onStartEditing({ row: r, column: c })}
+            className={`border-b border-r border-line px-3 py-1 max-w-[420px] truncate whitespace-nowrap ${activeColumn === c ? 'outline outline-1 -outline-offset-1 outline-accent' : ''}`}>
+            {editing?.c === c ? (
+              <CellEditor value={editing.v} isNullable={nullableColumns?.has(c) ?? false} onChange={props.onEditValueChange}
+                onCommit={props.onCommit} onCancel={props.onCancelEditing} onBlur={props.onBlurEditor} />
+            ) : v === null || v === undefined ? <span className="text-dim italic">NULL</span> : display(v)}
+          </td>
+        )
+      })}
+    </tr>
+  )
+}
+
+/** Empty row standing for the rows that are scrolled out of view. */
+function SpacerRow({ height, columnCount }: { height: number; columnCount: number }) {
+  if (height <= 0) return null
+  return <tr aria-hidden><td colSpan={columnCount} className="p-0 border-0" style={{ height }} /></tr>
 }
