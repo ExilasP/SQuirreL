@@ -3,6 +3,7 @@ import type { ConnectionConfig, QueryResult, RowChange, RowsRequest, TableDetail
 import { type Driver, quoteIdent as q } from './types'
 import { buildDdl, fetchTriggers } from './postgresSchema'
 import { fetchRoles } from './postgresRoles'
+import { fetchTypes } from './postgresTypes'
 
 const FK_ACTIONS: Record<string, string> = { a: 'NO ACTION', r: 'RESTRICT', c: 'CASCADE', n: 'SET NULL', d: 'SET DEFAULT' }
 
@@ -94,6 +95,7 @@ export function createPostgresDriver(cfg: ConnectionConfig): Driver {
          WHERE n.nspname = $1 AND c.relkind IN ('r','p','v','m') ORDER BY c.relname`, [schema])
       return r.rows.map((x): TableRef => ({ schema, name: x.name, kind: x.kind === 'v' || x.kind === 'm' ? 'view' : 'table' }))
     },
+    listTypes: (schema) => fetchTypes(pool, schema),
     describeTable: (s, t) => tableDetail(s, t),
     async graph(schema) {
       const tables = await this.listTables(schema)
