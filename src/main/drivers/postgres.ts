@@ -3,6 +3,7 @@ import type { ConnectionConfig, QueryResult, RowChange, RowsRequest, TableDetail
 import { type Driver, quoteIdent as q } from './types'
 import { buildDdl, fetchTriggers } from './postgresSchema'
 import { fetchRoles } from './postgresRoles'
+import { fetchTypes } from './postgresTypes'
 
 const FK_ACTIONS: Record<string, string> = { a: 'NO ACTION', r: 'RESTRICT', c: 'CASCADE', n: 'SET NULL', d: 'SET DEFAULT' }
 
@@ -36,7 +37,11 @@ export function createPostgresDriver(cfg: ConnectionConfig): Driver {
     const cols = await pool.query(
       `SELECT a.attname AS name, format_type(a.atttypid, a.atttypmod) AS type, NOT a.attnotnull AS nullable,
               pg_get_expr(d.adbin, d.adrelid) AS dflt,
-              COALESCE(i.indisprimary, false) AS pk, col_description(a.attrelid, a.attnum) AS comment
+              COALESCE(i.indisprimary, false) AS pk, col_description(a.attrelid, a.attnum) AS comment,
+              -- A domain over an enum accepts the same labels, hence the lookup through typbasetype.
+              ARRAY(SELECT e.enumlabel::text FROM pg_enum e JOIN pg_type t ON t.oid = a.atttypid
+                    WHERE e.enumtypid = CASE t.typtype WHEN 'd' THEN t.typbasetype ELSE t.oid END
+                    ORDER BY e.enumsortorder) AS enum_values
        FROM pg_attribute a
        JOIN pg_class c ON c.oid = a.attrelid JOIN pg_namespace n ON n.oid = c.relnamespace
        LEFT JOIN pg_attrdef d ON d.adrelid = a.attrelid AND d.adnum = a.attnum
@@ -60,7 +65,7 @@ export function createPostgresDriver(cfg: ConnectionConfig): Driver {
        JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = $1 AND c.relname = $2`, [schema, table])
     return {
       schema, name: table, kind,
-      columns: cols.rows.map((c) => ({ name: c.name, type: c.type, nullable: c.nullable, defaultValue: c.dflt, primaryKey: c.pk, comment: c.comment })),
+      columns: cols.rows.map((c) => ({ name: c.name, type: c.type, nullable: c.nullable, defaultValue: c.dflt, primaryKey: c.pk, comment: c.comment, enumValues: c.enum_values.length ? c.enum_values : null })),
       foreignKeys: fks.rows.map((f) => ({ name: f.name, columns: f.cols, refSchema: f.ref_schema, refTable: f.ref_table, refColumns: f.ref_cols, onUpdate: FK_ACTIONS[f.on_update], onDelete: FK_ACTIONS[f.on_delete] })),
       indexes: idx.rows.map((i) => ({ name: i.name, unique: i.unique, primary: i.pk, method: i.method, predicate: i.predicate, definition: i.def, columns: i.cols }))
     }
@@ -94,6 +99,7 @@ export function createPostgresDriver(cfg: ConnectionConfig): Driver {
          WHERE n.nspname = $1 AND c.relkind IN ('r','p','v','m') ORDER BY c.relname`, [schema])
       return r.rows.map((x): TableRef => ({ schema, name: x.name, kind: x.kind === 'v' || x.kind === 'm' ? 'view' : 'table' }))
     },
+    listTypes: (schema) => fetchTypes(pool, schema),
     describeTable: (s, t) => tableDetail(s, t),
     async graph(schema) {
       const tables = await this.listTables(schema)
