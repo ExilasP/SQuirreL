@@ -5,6 +5,8 @@ import { useStore } from '@/lib/store'
 import { ConnectionDialog } from './ConnectionDialog'
 import { NameDialog } from './NameDialog'
 import { TreeRow } from './TreeRow'
+import { ResizeHandle } from './ResizeHandle'
+import { useResizable } from '@/lib/useResizable'
 
 export function Sidebar() {
   const { connections, savedQueries, openSavedQuery, renameSavedQuery, removeSavedQuery, opened, openConnection, closeConnection, removeConnection, openDatabase, databaseKeyOf, openTab, openRoles, openNewQuery } = useStore()
@@ -18,9 +20,12 @@ export function Sidebar() {
   const [unfoldedMap, setUnfolded] = useState<Record<string, boolean>>({})
   const unfolded = (k: string, fallback: boolean) => unfoldedMap[k] ?? fallback
   const toggleUnfolded = (k: string, fallback: boolean) => setUnfolded((m) => ({ ...m, [k]: !(m[k] ?? fallback) }))
+  // Never let the sidebar eat more than half of the window, so tabs stay usable.
+  const { size: width, handleProps } = useResizable({ storageKey: 'squirrel.sidebarWidth', axis: 'x', initialSize: 288, minSize: 180, maxSize: () => window.innerWidth / 2 })
 
   return (
-    <aside className="w-72 shrink-0 bg-panel border-r border-line flex flex-col">
+    <aside className="relative shrink-0 bg-panel border-r border-line flex flex-col" style={{ width }}>
+      <ResizeHandle {...handleProps} />
       <div className="flex items-center gap-2 px-4 h-12 border-b border-line">
         <Database size={16} className="text-accent" />
         <span className="font-semibold tracking-tight">SQuirreL</span>
