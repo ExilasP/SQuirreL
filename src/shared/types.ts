@@ -44,6 +44,11 @@ export interface ColumnInfo {
   primaryKey: boolean
   /** User-provided column comment, when the engine supports them (PostgreSQL). */
   comment: string | null
+  /**
+   * Allowed values when the column type is an enum (or a domain over one), in
+   * sort order; `null` for any other type. Lets editors offer a picker.
+   */
+  enumValues: string[] | null
 }
 
 export interface ForeignKey {
