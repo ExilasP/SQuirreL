@@ -12,7 +12,7 @@ export interface Shortcut {
 /** Single source of truth for the shortcuts, used both for matching and for the welcome screen. */
 export const SHORTCUTS: readonly Shortcut[] = [
   { id: 'quickOpen', keys: 'Mod+P', label: 'Search a table or saved query' },
-  { id: 'find', keys: 'Mod+F', label: 'Search schemas, tables, columns' },
+  { id: 'find', keys: 'Mod+F', label: 'Search schemas, tables, columns, ERD' },
   { id: 'newQuery', keys: 'Mod+N', label: 'New query' },
   { keys: 'Mod+Enter', label: 'Run query (or selection)' },
   { keys: 'Mod+S', label: 'Save query' },
