@@ -18,12 +18,12 @@ interface Props {
 /**
  * Inline editor shown in a grid cell on double-click or Enter.
  *
- * Has a minimum width so that narrow columns (short ids, booleans…) still
- * leave room to read and edit the value; the column widens while editing.
+ * Fills the cell: the grid widens the edited column (see
+ * `widenEditedColumn`) so that narrow columns leave room to edit the value.
  */
 export function CellEditor({ value, enumValues, isNullable, onChange, onCommit, onCancel, onBlur }: Props) {
   return (
-    <div className="flex gap-1 -mx-2 min-w-48">
+    <div className="flex gap-1 -mx-2">
       {enumValues ? (
         // Picking a value saves it at once: there is nothing else to type.
         <EnumSelect ref={openPicker} autoFocus className="field !py-0.5 font-mono flex-1 min-w-0" options={enumValues} value={value}
