@@ -98,6 +98,9 @@ function FormatOptions({ format, detected, onChange }: {
   )
 }
 
+/** Shows NULL and empty string differently, since the import keeps them apart. */
+const formatSample = (cell: string | null | undefined): string => (cell == null ? 'NULL' : cell === '' ? '""' : cell)
+
 /** One row per CSV column: target table column picker and the first sample values. */
 function ColumnMapping({ preview, columns, mapping, onChange }: {
   preview: CsvPreview
@@ -122,7 +125,7 @@ function ColumnMapping({ preview, columns, mapping, onChange }: {
               </select>
             </td>
             <td className="py-1 font-mono text-dim truncate max-w-[260px]">
-              {preview.rows.map((row) => row[index] ?? 'NULL').join(' · ')}
+              {preview.rows.map((row) => formatSample(row[index])).join(' · ')}
             </td>
           </tr>
         ))}
