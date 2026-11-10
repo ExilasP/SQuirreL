@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ArrowDown, ArrowUp } from 'lucide-react'
 import { display } from '@/lib/format'
 import { CellEditor } from './CellEditor'
@@ -21,14 +21,23 @@ interface Props {
   selectionResetKey?: unknown
   /** Receives the indices of the selected rows (or of the active cell's row) whenever they change. */
   onSelectedRowsChange?(rows: number[]): void
+  /** Columns found by a column search; their header is highlighted. */
+  matchedColumns?: Set<string>
+  /** Column search hit to outline and scroll into view. */
+  focusedColumn?: string | null
 }
 
 /** Background of a body row depending on how it is selected. */
 const rowClassName = (isSelected: boolean, hasActiveCell: boolean): string =>
   isSelected ? 'bg-accent-soft' : hasActiveCell ? 'bg-raised/60' : 'hover:bg-raised/60'
 
-export function Grid({ columns, rows, pkColumns, nullableColumns, enumValuesByColumn, sort, onSort, onEdit, selectionResetKey, onSelectedRowsChange }: Props) {
+export function Grid({ columns, rows, pkColumns, nullableColumns, enumValuesByColumn, sort, onSort, onEdit, selectionResetKey, onSelectedRowsChange, matchedColumns, focusedColumn }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!focusedColumn) return
+    const header = containerRef.current?.querySelector(`th[data-column="${CSS.escape(focusedColumn)}"]`)
+    header?.scrollIntoView({ inline: 'center', block: 'nearest' })
+  }, [focusedColumn])
   const [editing, setEditing] = useState<{ r: number; c: string; v: string } | null>(null)
 
   const startEditing = ({ row, column }: CellPosition) => {
@@ -57,8 +66,10 @@ export function Grid({ columns, rows, pkColumns, nullableColumns, enumValuesByCo
           <tr>
             <th className="w-10 bg-panel border-b border-r border-line text-dim text-right px-2 py-1.5 font-normal">#</th>
             {columns.map((c) => (
-              <th key={c} onClick={() => onSort?.(c)} className="bg-panel border-b border-r border-line px-3 py-1.5 text-left font-sans font-medium whitespace-nowrap cursor-pointer hover:bg-raised">
-                <span className={pkColumns?.has(c) ? 'text-accent' : ''}>{c}</span>
+              <th key={c} data-column={c} onClick={() => onSort?.(c)}
+                className={`bg-panel border-b border-r border-line px-3 py-1.5 text-left font-sans font-medium whitespace-nowrap cursor-pointer hover:bg-raised ${focusedColumn === c ? 'outline outline-1 -outline-offset-1 outline-accent' : ''}`}>
+                {/* The highlight sits on the label: a translucent header would let scrolled rows show through. */}
+                <span className={`${pkColumns?.has(c) ? 'text-accent' : ''} ${matchedColumns?.has(c) ? 'bg-accent-soft rounded px-1 -mx-1' : ''}`}>{c}</span>
                 {sort?.column === c && (sort.dir === 'asc' ? <ArrowUp size={11} className="inline ml-1" /> : <ArrowDown size={11} className="inline ml-1" />)}
               </th>
             ))}

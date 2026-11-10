@@ -5,8 +5,13 @@ import { errMessage, useStore, type Tab } from '@/lib/store'
 import { Grid } from '@/components/Grid'
 import { InsertDialog } from '@/components/InsertDialog'
 import { ExportMenu } from '@/components/ExportMenu'
+import { SearchField } from '@/components/SearchField'
+import { useFindScope } from '@/lib/findScopes'
+import { useColumnSearch } from '@/lib/useColumnSearch'
 
 const PAGE = 200
+/** Stable fallback so the column search does not recompute before the first page loads. */
+const EMPTY_COLUMNS: string[] = []
 
 /** Row browser with paging, sorting, filtering and inline editing. */
 export function DataPane({ tab }: { tab: Extract<Tab, { kind: 'table' }> }) {
@@ -22,6 +27,10 @@ export function DataPane({ tab }: { tab: Extract<Tab, { kind: 'table' }> }) {
   const [inserting, setInserting] = useState(false)
 
   const detailRef = useRef<TableDetail | null>(null)
+  const paneRef = useRef<HTMLDivElement>(null)
+  const columnSearchRef = useRef<HTMLInputElement>(null)
+  const columnSearch = useColumnSearch(res?.columns ?? EMPTY_COLUMNS)
+  useFindScope(paneRef, () => { columnSearchRef.current?.focus(); columnSearchRef.current?.select() })
   const total = res?.total ?? 0
   const pks = useMemo(() => new Set(detail?.columns.filter((c) => c.primaryKey).map((c) => c.name)), [detail])
   const nullableColumns = useMemo(() => new Set(detail?.columns.filter((c) => c.nullable).map((c) => c.name)), [detail])
@@ -73,10 +82,13 @@ export function DataPane({ tab }: { tab: Extract<Tab, { kind: 'table' }> }) {
   const pages = Math.max(1, Math.ceil(total / PAGE))
 
   return (
-    <div className="h-full flex flex-col">
+    <div ref={paneRef} className="h-full flex flex-col">
       <div className="flex items-center gap-2 px-3 h-12 border-b border-line">
         <input className="field !w-96 font-mono" placeholder="WHERE …   e.g.  age > 30 AND name LIKE 'A%'" value={where}
           onChange={(e) => setWhere(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { setPage(0); setApplied(where) } }} />
+        <SearchField ref={columnSearchRef} className="w-56 shrink-0" placeholder="Find column…" value={columnSearch.query} onChange={columnSearch.setQuery}
+          status={`${columnSearch.position} / ${columnSearch.matches.size}`}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); columnSearch.step(e.shiftKey ? -1 : 1) } }} />
         <button className="btn" onClick={load} title="Refresh"><RefreshCw size={14} className={loading ? 'animate-spin' : ''} /></button>
         {editable && <>
           <button className="btn" onClick={() => setInserting(true)}><Plus size={14} /> Row</button>
@@ -96,7 +108,7 @@ export function DataPane({ tab }: { tab: Extract<Tab, { kind: 'table' }> }) {
         {res && <Grid columns={res.columns} rows={res.rows} pkColumns={pks} nullableColumns={nullableColumns} enumValuesByColumn={enumValuesByColumn} sort={sort} onSelectedRowsChange={setSelectedRows}
           selectionResetKey={`${page}|${sort?.column}|${sort?.dir}|${applied}`}
           onSort={(c) => { setPage(0); setSort(sort?.column === c ? (sort.dir === 'asc' ? { column: c, dir: 'desc' } : null) : { column: c, dir: 'asc' }) }}
-          onEdit={editable ? edit : undefined} />}
+          onEdit={editable ? edit : undefined} matchedColumns={columnSearch.matches} focusedColumn={columnSearch.current} />}
       </div>
       <div className="h-8 px-3 flex items-center gap-4 border-t border-line text-dim text-xs">
         <span>{tab.schema}.{tab.table}</span>
