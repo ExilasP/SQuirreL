@@ -2,6 +2,11 @@ import { display } from './format'
 
 /** Widest a value column grows; longer values are truncated with an ellipsis. */
 export const MAX_COLUMN_WIDTH = 420
+/**
+ * Narrowest a column gets while one of its cells is edited, so that narrow
+ * columns (short ids, booleans…) leave room for the input and the NULL button.
+ */
+export const EDITING_COLUMN_MIN_WIDTH = 200
 /** Narrowest the `#` column gets, so that short pages keep a stable gutter. */
 const MIN_INDEX_COLUMN_WIDTH = 40
 /**
@@ -72,4 +77,20 @@ function longestValue(rows: Record<string, unknown>[], column: string): string {
     if (longest.length >= MAX_MEASURED_LENGTH) break
   }
   return longest.slice(0, MAX_MEASURED_LENGTH)
+}
+
+/**
+ * Widens the column being edited to {@link EDITING_COLUMN_MIN_WIDTH}.
+ *
+ * With a fixed table layout the column no longer grows to fit the inline
+ * editor, whose content would be clipped by the cell.
+ *
+ * @param widths - Widths computed from the page of rows.
+ * @param editedColumn - Index of the edited column, or `-1` when none is.
+ * @returns `widths` itself when no column needs to grow, a widened copy otherwise.
+ */
+export function widenEditedColumn(widths: ColumnWidths, editedColumn: number): ColumnWidths {
+  const current = widths.values[editedColumn]
+  if (current === undefined || current >= EDITING_COLUMN_MIN_WIDTH) return widths
+  return { ...widths, values: widths.values.map((width, ci) => (ci === editedColumn ? EDITING_COLUMN_MIN_WIDTH : width)) }
 }
