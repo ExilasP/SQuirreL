@@ -106,6 +106,17 @@ export function createSqliteDriver(cfg: ConnectionConfig): Driver {
     async remove(_s, table, key) {
       const w = where(key)
       db.prepare(`DELETE FROM ${q(table)} WHERE rowid = (SELECT rowid FROM ${q(table)} WHERE ${w.sql} LIMIT 1)`).run(...w.params)
+    },
+    async insertRows(_s, table, columns, rows, options) {
+      if (!columns.length) throw new Error('No column selected for the import')
+      const insert = db.prepare(`INSERT INTO ${q(table)} (${columns.map(q).join(', ')}) VALUES (${columns.map(() => '?').join(', ')})`)
+      // Text values still land as numbers in INTEGER/REAL columns thanks to SQLite type affinity.
+      const load = db.transaction(() => {
+        if (options.truncate) db.prepare(`DELETE FROM ${q(table)}`).run()
+        for (const row of rows) insert.run(...row)
+        return rows.length
+      })
+      return load()
     }
   }
 }
