@@ -1,6 +1,7 @@
 import { dialog, ipcMain } from 'electron'
 import { appendFile, readFile, writeFile } from 'fs/promises'
-import { parseConnectionKey, type ConnectionConfig, type RowsRequest, type SavedQuery } from '@shared/types'
+import { parseConnectionKey, type ConnectionConfig, type CsvFormat, type CsvImportRequest, type RowsRequest, type SavedQuery } from '@shared/types'
+import { applyColumnMapping, previewCsv, readCsvTable } from './csvImport'
 import { createDriver } from './drivers'
 import type { Driver } from './drivers/types'
 import { csvHeader, csvRows, type ExportFormat } from './export'
@@ -96,6 +97,18 @@ export function registerIpc(): void {
     const path = await askPath(name, format); if (!path) return null
     await writeFile(path, format === 'csv' ? csvHeader(columns) + csvRows(columns, rows) : JSON.stringify(rows, null, 2) + '\n')
     return { path, count: rows.length }
+  })
+
+  h('import:pickCsv', async () => {
+    const r = await dialog.showOpenDialog({ properties: ['openFile'], filters: [{ name: 'CSV', extensions: ['csv', 'tsv', 'txt'] }, { name: 'All', extensions: ['*'] }] })
+    return r.canceled ? null : r.filePaths[0]
+  })
+  h('import:previewCsv', async (path: string, format: Omit<CsvFormat, 'delimiter'> & { delimiter?: string }) =>
+    previewCsv(path, await readFile(path, 'utf8'), format))
+  h('import:csv', async (id: string, req: CsvImportRequest) => {
+    const { rows } = readCsvTable(await readFile(req.path, 'utf8'), req.format)
+    const mapped = applyColumnMapping(rows, req.mapping)
+    return { count: await get(id).insertRows(req.schema, req.table, mapped.columns, mapped.rows, { truncate: req.truncate }) }
   })
 
   h('queries:list', () => loadQueries())
