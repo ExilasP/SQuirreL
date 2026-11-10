@@ -27,6 +27,14 @@ interface Props {
   focusedColumn?: string | null
 }
 
+/** Header of a column found by the column search; opaque so the sticky header still hides scrolled rows. */
+const searchHeaderClassName = (isMatch: boolean, isCurrent: boolean): string =>
+  isCurrent ? 'bg-search-header-current text-search shadow-[inset_0_-3px_0_var(--color-search)]' : isMatch ? 'bg-search-header text-search' : 'bg-panel'
+
+/** Body cell of a column found by the column search. */
+const searchCellClassName = (isMatch: boolean, isCurrent: boolean): string =>
+  isCurrent ? 'bg-search/20' : isMatch ? 'bg-search/10' : ''
+
 /** Background of a body row depending on how it is selected. */
 const rowClassName = (isSelected: boolean, hasActiveCell: boolean): string =>
   isSelected ? 'bg-accent-soft' : hasActiveCell ? 'bg-raised/60' : 'hover:bg-raised/60'
@@ -67,9 +75,8 @@ export function Grid({ columns, rows, pkColumns, nullableColumns, enumValuesByCo
             <th className="w-10 bg-panel border-b border-r border-line text-dim text-right px-2 py-1.5 font-normal">#</th>
             {columns.map((c) => (
               <th key={c} data-column={c} onClick={() => onSort?.(c)}
-                className={`bg-panel border-b border-r border-line px-3 py-1.5 text-left font-sans font-medium whitespace-nowrap cursor-pointer hover:bg-raised ${focusedColumn === c ? 'outline outline-1 -outline-offset-1 outline-accent' : ''}`}>
-                {/* The highlight sits on the label: a translucent header would let scrolled rows show through. */}
-                <span className={`${pkColumns?.has(c) ? 'text-accent' : ''} ${matchedColumns?.has(c) ? 'bg-accent-soft rounded px-1 -mx-1' : ''}`}>{c}</span>
+                className={`${searchHeaderClassName(!!matchedColumns?.has(c), focusedColumn === c)} border-b border-r border-line px-3 py-1.5 text-left font-sans font-medium whitespace-nowrap cursor-pointer hover:bg-raised`}>
+                <span className={pkColumns?.has(c) && !matchedColumns?.has(c) ? 'text-accent' : ''}>{c}</span>
                 {sort?.column === c && (sort.dir === 'asc' ? <ArrowUp size={11} className="inline ml-1" /> : <ArrowDown size={11} className="inline ml-1" />)}
               </th>
             ))}
@@ -91,7 +98,7 @@ export function Grid({ columns, rows, pkColumns, nullableColumns, enumValuesByCo
                   // scroll-mt keeps keyboard-selected cells clear of the sticky header.
                   <td key={c} data-col={ci} onClick={() => selectCell({ row: r, column: c })}
                     onDoubleClick={() => startEditing({ row: r, column: c })}
-                    className={`border-b border-r border-line px-3 py-1 max-w-[420px] truncate whitespace-nowrap scroll-mt-8 ${isActive ? 'outline outline-1 -outline-offset-1 outline-accent' : ''}`}>
+                    className={`border-b border-r border-line px-3 py-1 max-w-[420px] truncate whitespace-nowrap scroll-mt-8 ${searchCellClassName(!!matchedColumns?.has(c), focusedColumn === c)} ${isActive ? 'outline outline-1 -outline-offset-1 outline-accent' : ''}`}>
                     {isEditing ? (
                       <CellEditor value={editing.v} enumValues={enumValuesByColumn?.get(c)} isNullable={nullableColumns?.has(c) ?? false} onChange={(v) => setEditing({ ...editing, v })}
                         onCommit={commit} onCancel={stopEditing} onBlur={() => setEditing(null)} />
