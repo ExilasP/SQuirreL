@@ -41,7 +41,7 @@ export function ColumnsPane({ detail }: { detail: TableDetail }) {
     <div ref={paneRef} className="h-full flex flex-col">
       <div className="flex items-center px-3 h-12 border-b border-line">
         <SearchField ref={searchRef} className="w-80" placeholder="Filter columns by name, type or comment…" value={query} onChange={setQuery}
-          status={`${shown.length} / ${detail.columns.length}`} />
+          status={`${shown.length} / ${detail.columns.length}`} hasNoMatch={shown.length === 0} />
       </div>
       <div className="flex-1 min-h-0">
         <MetaTable columns={columns} rows={shown} emptyMessage={query ? 'No matching column' : 'No columns'} />

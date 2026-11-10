@@ -113,7 +113,7 @@ function ErdSearchPanel({ search, inputRef }: ErdSearchPanelProps) {
   return (
     <Panel position="top-left">
       <SearchField ref={inputRef} className="w-72" placeholder="Find table or column…" value={search.query} onChange={search.setQuery}
-        status={`${search.position} / ${search.matches.length}`}
+        status={`${search.position} / ${search.matches.length}`} hasNoMatch={search.matches.length === 0}
         onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); search.step(e.shiftKey ? -1 : 1) } }} />
     </Panel>
   )
