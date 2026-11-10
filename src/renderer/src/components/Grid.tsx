@@ -5,7 +5,7 @@ import { CellEditor } from './CellEditor'
 import { useGridSelection } from '@/lib/useGridSelection'
 import { useVirtualRows } from '@/lib/useVirtualRows'
 import { useColumnWidths } from '@/lib/useColumnWidths'
-import type { ColumnWidths } from '@/lib/columnWidths'
+import { widenEditedColumn, type ColumnWidths } from '@/lib/columnWidths'
 import type { CellPosition, RowSelectMode } from '@/lib/gridSelection'
 
 interface Props {
@@ -41,7 +41,8 @@ export function Grid({ columns, rows, pkColumns, nullableColumns, enumValuesByCo
     setEditing({ r: row, c: column, v: value === null ? '' : display(value) })
   }
   const virtualRows = useVirtualRows({ containerRef, rowCount: rows.length })
-  const columnWidths = useColumnWidths(headerRef, columns, rows)
+  const pageColumnWidths = useColumnWidths(headerRef, columns, rows)
+  const columnWidths = pageColumnWidths && widenEditedColumn(pageColumnWidths, editing ? columns.indexOf(editing.c) : -1)
   const scrollRowIntoView = (row: number) => virtualRows.scrollRowIntoView(row, headerRef.current?.offsetHeight ?? 0)
   const { selection, selectCell, selectRow, onKeyDown } = useGridSelection({
     columns, rows, containerRef, scrollRowIntoView, resetKey: selectionResetKey, onEditCell: startEditing, onSelectedRowsChange
