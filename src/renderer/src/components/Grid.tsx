@@ -4,6 +4,8 @@ import { display } from '@/lib/format'
 import { CellEditor } from './CellEditor'
 import { useGridSelection } from '@/lib/useGridSelection'
 import { useVirtualRows } from '@/lib/useVirtualRows'
+import { useColumnWidths } from '@/lib/useColumnWidths'
+import type { ColumnWidths } from '@/lib/columnWidths'
 import type { CellPosition, RowSelectMode } from '@/lib/gridSelection'
 
 interface Props {
@@ -39,6 +41,7 @@ export function Grid({ columns, rows, pkColumns, nullableColumns, enumValuesByCo
     setEditing({ r: row, c: column, v: value === null ? '' : display(value) })
   }
   const virtualRows = useVirtualRows({ containerRef, rowCount: rows.length })
+  const columnWidths = useColumnWidths(headerRef, columns, rows)
   const scrollRowIntoView = (row: number) => virtualRows.scrollRowIntoView(row, headerRef.current?.offsetHeight ?? 0)
   const { selection, selectCell, selectRow, onKeyDown } = useGridSelection({
     columns, rows, containerRef, scrollRowIntoView, resetKey: selectionResetKey, onEditCell: startEditing, onSelectedRowsChange
@@ -56,10 +59,13 @@ export function Grid({ columns, rows, pkColumns, nullableColumns, enumValuesByCo
   return (
     // Focusable so that keyboard navigation and Ctrl+C reach the grid once a cell has been clicked.
     <div ref={containerRef} tabIndex={0} onKeyDown={onKeyDown} className="h-full overflow-auto font-mono text-[12.5px] outline-none">
-      <table className="border-separate border-spacing-0 min-w-full">
+      {/* Fixed layout: widths come from the whole page, not from the few rows rendered at a time. */}
+      <table className={`border-separate border-spacing-0 min-w-full ${columnWidths ? 'table-fixed' : ''}`}
+        style={columnWidths ? { width: totalWidth(columnWidths) } : undefined}>
+        {columnWidths && <ColumnGroup widths={columnWidths} />}
         <thead ref={headerRef} className="sticky top-0 z-10">
           <tr>
-            <th data-col={-1} className="w-10 bg-panel border-b border-r border-line text-dim text-right px-2 py-1.5 font-normal">#</th>
+            <th data-col={-1} className="bg-panel border-b border-r border-line text-dim text-right px-2 py-1.5 font-normal">#</th>
             {columns.map((c, ci) => (
               <th key={c} data-col={ci} onClick={() => onSort?.(c)} className="bg-panel border-b border-r border-line px-3 py-1.5 text-left font-sans font-medium whitespace-nowrap cursor-pointer hover:bg-raised">
                 <span className={pkColumns?.has(c) ? 'text-accent' : ''}>{c}</span>
@@ -132,7 +138,7 @@ function GridRow(props: GridRowProps) {
         return (
           <td key={c} data-col={ci} onClick={() => props.onSelectCell({ row: r, column: c })}
             onDoubleClick={() => props.onStartEditing({ row: r, column: c })}
-            className={`border-b border-r border-line px-3 py-1 max-w-[420px] truncate whitespace-nowrap ${activeColumn === c ? 'outline outline-1 -outline-offset-1 outline-accent' : ''}`}>
+            className={`border-b border-r border-line px-3 py-1 truncate whitespace-nowrap ${activeColumn === c ? 'outline outline-1 -outline-offset-1 outline-accent' : ''}`}>
             {editing?.c === c ? (
               <CellEditor value={editing.v} enumValues={enumValuesByColumn?.get(c)} isNullable={nullableColumns?.has(c) ?? false} onChange={props.onEditValueChange}
                 onCommit={props.onCommit} onCancel={props.onCancelEditing} onBlur={props.onBlurEditor} />
@@ -141,6 +147,19 @@ function GridRow(props: GridRowProps) {
         )
       })}
     </tr>
+  )
+}
+
+/** Sum of the column widths, so that the fixed-layout table does not shrink them. */
+const totalWidth = ({ index, values }: ColumnWidths): number => values.reduce((total, width) => total + width, index)
+
+/** Column widths of the table, applied by the fixed table layout. */
+function ColumnGroup({ widths }: { widths: ColumnWidths }) {
+  return (
+    <colgroup>
+      <col style={{ width: widths.index }} />
+      {widths.values.map((width, ci) => <col key={ci} style={{ width }} />)}
+    </colgroup>
   )
 }
 
