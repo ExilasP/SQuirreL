@@ -7,6 +7,7 @@ import { columnKey, computeHighlight, filterGraphAround, listErdSearchTargets, m
 import { errMessage, useStore } from '@/lib/store'
 import { useFindScope } from '@/lib/findScopes'
 import { useCyclingSearch, type CyclingSearch } from '@/lib/useCyclingSearch'
+import { searchHitClassName } from '@/lib/searchHighlight'
 import { SearchField } from './SearchField'
 
 const W = 240, ROW = 22, HEAD = 34
@@ -28,10 +29,6 @@ interface ErdInteraction {
 
 const NO_SEARCH: ErdSearchState = { tables: new Set(), columns: new Set(), current: null }
 const ErdInteractionContext = createContext<ErdInteraction>({ highlight: null, search: NO_SEARCH, selectColumn: () => {} })
-
-/** Classes of a search hit; the current one gets a stronger outline. */
-const searchHitClassName = (isMatch: boolean, isCurrent: boolean): string =>
-  isCurrent ? 'outline outline-2 -outline-offset-2 outline-[#ffb454] bg-[#ffb454]/20' : isMatch ? 'bg-[#ffb454]/15' : ''
 
 function TableNode({ data }: NodeProps<Node<{ t: TableDetail }>>) {
   const { t } = data
