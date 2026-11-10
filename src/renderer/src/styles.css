@@ -12,6 +12,10 @@
   --color-accent-soft: #7c8cff22;
   --color-danger: #ff6b7a;
   --color-ok: #4fd1a5;
+  /* Ctrl+F hits; the header variants are opaque so sticky headers hide the rows scrolled under them. */
+  --color-search: #ffb454;
+  --color-search-header: color-mix(in srgb, #ffb454 14%, #14161c);
+  --color-search-header-current: color-mix(in srgb, #ffb454 30%, #14161c);
   --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Code', monospace;
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ChevronRight, Copy, Database, Eye, FileCode2, FolderClosed, Network, Pencil, Plus, Power, Shapes, Table2, Trash2, Users } from 'lucide-react'
 import { parseConnectionKey, type ConnectionConfig, type SavedQuery } from '@shared/types'
 import { useStore } from '@/lib/store'
@@ -7,9 +7,12 @@ import { NameDialog } from './NameDialog'
 import { TreeRow } from './TreeRow'
 import { ResizeHandle } from './ResizeHandle'
 import { useResizable } from '@/lib/useResizable'
+import { useFindScope } from '@/lib/findScopes'
+import { matchesQuery } from '@/lib/search'
+import { SearchField } from './SearchField'
 
 export function Sidebar() {
-  const { connections, savedQueries, openSavedQuery, renameSavedQuery, removeSavedQuery, opened, openConnection, closeConnection, removeConnection, openDatabase, databaseKeyOf, openTab, openRoles, openNewQuery } = useStore()
+  const { connections, savedQueries, openSavedQuery, renameSavedQuery, removeSavedQuery, opened, openConnection, closeConnection, removeConnection, openDatabase, databaseKeyOf, openTab, openRoles, openNewQuery, loadAllTables } = useStore()
   const [dialog, setDialog] = useState<ConnectionConfig | 'new' | null>(null)
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const [filter, setFilter] = useState('')
@@ -22,16 +25,23 @@ export function Sidebar() {
   const toggleUnfolded = (k: string, fallback: boolean) => setUnfolded((m) => ({ ...m, [k]: !(m[k] ?? fallback) }))
   // Never let the sidebar eat more than half of the window, so tabs stay usable.
   const { size: width, handleProps } = useResizable({ storageKey: 'squirrel.sidebarWidth', axis: 'x', initialSize: 288, minSize: 180, maxSize: () => window.innerWidth / 2 })
+  const sidebarRef = useRef<HTMLElement>(null)
+  const filterRef = useRef<HTMLInputElement>(null)
+  // Lowest priority: Ctrl+F lands here only when the main content has nothing to search.
+  useFindScope(sidebarRef, () => { filterRef.current?.focus(); filterRef.current?.select() }, 0)
+  const isFiltering = filter.trim() !== ''
+  // Schemas are loaded lazily; a search must also reach the folded ones.
+  useEffect(() => { if (isFiltering) void loadAllTables() }, [isFiltering, opened, loadAllTables])
 
   return (
-    <aside className="relative shrink-0 bg-panel border-r border-line flex flex-col" style={{ width }}>
+    <aside ref={sidebarRef} className="relative shrink-0 bg-panel border-r border-line flex flex-col" style={{ width }}>
       <ResizeHandle {...handleProps} />
       <div className="flex items-center gap-2 px-4 h-12 border-b border-line">
         <Database size={16} className="text-accent" />
         <span className="font-semibold tracking-tight">SQuirreL</span>
         <button className="btn ghost !p-1 ml-auto" title="New connection" onClick={() => setDialog('new')}><Plus size={16} /></button>
       </div>
-      <div className="p-2"><input className="field" placeholder="Filter tables…" value={filter} onChange={(e) => setFilter(e.target.value)} /></div>
+      <div className="p-2"><SearchField ref={filterRef} placeholder="Filter schemas and tables…" value={filter} onChange={setFilter} /></div>
       <div className="flex-1 overflow-auto px-2 pb-3">
         {connections.length === 0 && (
           <div className="text-dim text-center mt-10 px-4">
@@ -55,7 +65,7 @@ export function Sidebar() {
                 <>
                   {c.driver === 'postgres' && <TreeRow depth={1} icon={Users} label="Roles" onClick={() => openRoles(c.id)} />}
                   {c.driver !== 'postgres' && <TreeRow depth={1} icon={FileCode2} label="New query" onClick={() => openNewQuery(c.id)} />}
-                  <SavedQueries queries={savedQueries.filter((q) => parseConnectionKey(q.connId).connId === c.id && q.name.toLowerCase().includes(filter.toLowerCase()))}
+                  <SavedQueries queries={savedQueries.filter((q) => parseConnectionKey(q.connId).connId === c.id && matchesQuery(q.name, filter))}
                     isCollapsed={!!collapsed[`${c.id}:queries`]} onToggle={() => toggle(`${c.id}:queries`)}
                     onOpen={openSavedQuery} onRename={setRenaming} onRemove={(q) => confirm(`Delete "${q.name}"?`) && removeSavedQuery(q.id)}
                     onDuplicate={(q) => openTab({ id: `q:${q.connId}:${Date.now()}`, kind: 'query', connId: q.connId, title: `${q.name} copy`, sql: q.sql, savedId: null, savedSql: '' })} />
@@ -160,10 +170,15 @@ function DatabaseTree({ connKey, depth, showSchemas, hasTypes, filter, onTableMe
 
   const renderSchema = (schema: string, index: number) => {
     const tables = node.tables[schema]
-    // The first schema is loaded on open and starts unfolded.
-    const isUnfolded = (!showSchemas || (unfoldedMap[schema] ?? index === 0)) && !!tables
+    const isFiltering = filter.trim() !== ''
+    // A schema whose name matches shows all its tables; otherwise only the matching ones.
+    const isSchemaMatch = showSchemas && isFiltering && matchesQuery(schema, filter)
+    const shown = isSchemaMatch ? tables : tables?.filter((t) => matchesQuery(t.name, filter))
+    if (isFiltering && !isSchemaMatch && !shown?.length) return null
+    // The first schema is loaded on open and starts unfolded; a search unfolds every hit.
+    const isUnfolded = (!showSchemas || isFiltering || (unfoldedMap[schema] ?? index === 0)) && !!tables
+    const showsSchemaEntries = !isFiltering || isSchemaMatch
     const childDepth = showSchemas ? depth + 1 : depth
-    const shown = tables?.filter((t) => t.name.toLowerCase().includes(filter.toLowerCase()))
     const onToggle = () => {
       if (!tables) loadTables(connKey, schema)
       setUnfolded((m) => ({ ...m, [schema]: tables ? !(m[schema] ?? index === 0) : true }))
@@ -173,9 +188,9 @@ function DatabaseTree({ connKey, depth, showSchemas, hasTypes, filter, onTableMe
         {showSchemas && <TreeRow depth={depth} icon={FolderClosed} label={schema} count={tables?.length} isExpanded={isUnfolded} onClick={onToggle} />}
         {isUnfolded && (
           <>
-            <TreeRow depth={childDepth} icon={Network} label="Diagram"
-              onClick={() => openTab({ id: `d:${connKey}:${schema}`, kind: 'diagram', connId: connKey, schema, title: `ER · ${schema}` })} />
-            {hasTypes && <TreeRow depth={childDepth} icon={Shapes} label="Types" onClick={() => openTypes(connKey, schema)} />}
+            {showsSchemaEntries && <TreeRow depth={childDepth} icon={Network} label="Diagram"
+              onClick={() => openTab({ id: `d:${connKey}:${schema}`, kind: 'diagram', connId: connKey, schema, title: `ER · ${schema}` })} />}
+            {hasTypes && showsSchemaEntries && <TreeRow depth={childDepth} icon={Shapes} label="Types" onClick={() => openTypes(connKey, schema)} />}
             {shown?.map((t) => (
               <TreeRow key={t.name} depth={childDepth} icon={t.kind === 'view' ? Eye : Table2} label={t.name}
                 onClick={() => openTable(connKey, schema, t.name)}
