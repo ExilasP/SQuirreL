@@ -186,9 +186,14 @@ export interface CsvFormat {
    * a quoted `""` always stays an empty string.
    */
   emptyAsNull: boolean
+  /**
+   * Unquoted text standing for NULL, e.g. `NULL` as written by pgAdmin's query
+   * tool download; a quoted `"NULL"` stays text. Empty string disables it.
+   */
+  nullMarker: string
 }
 
-/** A CSV cell: `null` when the field is NULL according to {@link CsvFormat.emptyAsNull}. */
+/** A CSV cell: `null` when the field is NULL per {@link CsvFormat.emptyAsNull} or {@link CsvFormat.nullMarker}. */
 export type CsvCell = string | null
 
 /** First lines of a CSV file, shown before importing it. */
