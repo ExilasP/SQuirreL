@@ -14,7 +14,7 @@ export function ImportDialog({ connId, detail, path, onDone, onClose }: {
   onDone(count: number): void
   onClose(): void
 }) {
-  const [format, setFormat] = useState<Omit<CsvFormat, 'delimiter'> & { delimiter?: string }>({ hasHeader: true, emptyAsNull: true })
+  const [format, setFormat] = useState<Omit<CsvFormat, 'delimiter'> & { delimiter?: string }>({ hasHeader: true, emptyAsNull: true, nullMarker: 'NULL' })
   const [preview, setPreview] = useState<CsvPreview | null>(null)
   const [mapping, setMapping] = useState<(string | null)[]>([])
   const [truncate, setTruncate] = useState(false)
@@ -93,6 +93,10 @@ function FormatOptions({ format, detected, onChange }: {
       </label>
       <label className="flex items-center gap-2 text-dim" title="An unquoted empty field becomes NULL; a quoted &quot;&quot; stays an empty string">
         <input type="checkbox" checked={format.emptyAsNull} onChange={(e) => onChange({ ...format, emptyAsNull: e.target.checked })} /> Empty field = NULL
+      </label>
+      <label className="flex items-center gap-2" title="Unquoted text read as NULL; a quoted value stays text. Leave empty to disable">
+        <span className="text-dim">NULL marker</span>
+        <input className="field !w-24 font-mono" value={format.nullMarker} placeholder="none" onChange={(e) => onChange({ ...format, nullMarker: e.target.value })} />
       </label>
     </div>
   )

@@ -13,16 +13,17 @@ const PREVIEW_ROWS = 5
  * @returns One array of cells per record; blank lines are dropped.
  * @throws If a quoted field is never closed.
  */
-export function parseCsv(text: string, format: Pick<CsvFormat, 'delimiter' | 'emptyAsNull'>): CsvCell[][] {
+export function parseCsv(text: string, format: Pick<CsvFormat, 'delimiter' | 'emptyAsNull' | 'nullMarker'>): CsvCell[][] {
   const records: CsvCell[][] = []
   let record: CsvCell[] = []
   let field = ''
   let isQuoted = false
   let i = 0
 
+  // Only unquoted fields can mean NULL, as in PostgreSQL's COPY ... CSV.
+  const isNull = () => !isQuoted && (field === '' ? format.emptyAsNull : field === format.nullMarker)
   const endField = () => {
-    // Only an unquoted empty field means NULL, as in PostgreSQL's COPY ... CSV.
-    record.push(field === '' && !isQuoted && format.emptyAsNull ? null : field)
+    record.push(isNull() ? null : field)
     field = ''; isQuoted = false
   }
   const endRecord = () => {
