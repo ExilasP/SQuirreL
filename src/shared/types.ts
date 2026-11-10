@@ -172,6 +172,51 @@ export interface RowChange {
 export type ExportFormat = 'csv' | 'json'
 export interface ExportOutcome { path: string; count: number }
 
+/**
+ * How a CSV file is laid out. Defaults match pgAdmin's export (comma, double
+ * quotes, header row, unquoted empty field = NULL).
+ */
+export interface CsvFormat {
+  /** Single field separator character, e.g. `,`, `;`, `\t`, `|`. */
+  delimiter: string
+  /** First line holds column names rather than data. */
+  hasHeader: boolean
+  /**
+   * Read an unquoted empty field as NULL (PostgreSQL `COPY ... CSV` semantics);
+   * a quoted `""` always stays an empty string.
+   */
+  emptyAsNull: boolean
+}
+
+/** A CSV cell: `null` when the field is NULL according to {@link CsvFormat.emptyAsNull}. */
+export type CsvCell = string | null
+
+/** First lines of a CSV file, shown before importing it. */
+export interface CsvPreview {
+  path: string
+  /** Delimiter detected from the first line, used unless the caller forced one. */
+  delimiter: string
+  /** Header names, or `column_1`, `column_2`… when the file has no header. */
+  headers: string[]
+  /** First data rows. */
+  rows: CsvCell[][]
+  /** Number of data rows in the whole file. */
+  rowCount: number
+}
+
+/** Loads a CSV file into an existing table. */
+export interface CsvImportRequest {
+  path: string
+  schema: string
+  table: string
+  format: CsvFormat
+  /** Target column for each CSV column, by position; `null` skips that CSV column. */
+  mapping: (string | null)[]
+  /** Empty the table first (inside the same transaction). */
+  truncate: boolean
+}
+export interface ImportOutcome { count: number }
+
 /** A SQL script kept in the app's own library, scoped to one connection. */
 export interface SavedQuery {
   id: string
@@ -215,6 +260,14 @@ export interface Api {
   export: {
     table(id: string, req: Omit<RowsRequest, 'limit' | 'offset'>, format: ExportFormat): Promise<ExportOutcome | null>
     result(name: string, format: ExportFormat, columns: string[], rows: Record<string, unknown>[]): Promise<ExportOutcome | null>
+  }
+  import: {
+    /** Asks the user for a CSV file; `null` when cancelled. */
+    pickCsv(): Promise<string | null>
+    /** Parses the start of a CSV file; a missing `format.delimiter` is detected. */
+    previewCsv(path: string, format: Omit<CsvFormat, 'delimiter'> & { delimiter?: string }): Promise<CsvPreview>
+    /** Inserts every row of the file in one transaction: all rows land, or none. */
+    csv(id: string, req: CsvImportRequest): Promise<ImportOutcome>
   }
   queries: {
     list(): Promise<SavedQuery[]>

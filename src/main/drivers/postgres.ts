@@ -5,6 +5,10 @@ import { buildDdl, fetchTriggers } from './postgresSchema'
 import { fetchRoles } from './postgresRoles'
 import { fetchTypes } from './postgresTypes'
 
+/** PostgreSQL accepts at most 65535 bind parameters per statement. */
+const MAX_PARAMS = 65535
+const MAX_ROWS_PER_INSERT = 1000
+
 const FK_ACTIONS: Record<string, string> = { a: 'NO ACTION', r: 'RESTRICT', c: 'CASCADE', n: 'SET NULL', d: 'SET DEFAULT' }
 
 // Return int8 / numeric as strings to avoid precision loss; dates stay as ISO strings.
@@ -129,6 +133,35 @@ export function createPostgresDriver(cfg: ConnectionConfig): Driver {
     async remove(schema, table, key) {
       const w = where(key)
       await pool.query(`DELETE FROM ${ref(schema, table)} WHERE ctid = (SELECT ctid FROM ${ref(schema, table)} WHERE ${w.sql} LIMIT 1)`, w.params)
+    },
+    insertRows: (schema, table, columns, rows, options) => insertRowsInTransaction(pool, ref(schema, table), columns, rows, options.truncate)
+  }
+}
+
+/** Builds `INSERT ... VALUES ($1, $2), ($3, $4)` for `rowCount` rows of `columns`. */
+function buildMultiRowInsert(target: string, columns: string[], rowCount: number): string {
+  const tuples = Array.from({ length: rowCount }, (_, r) =>
+    `(${columns.map((_, c) => `$${r * columns.length + c + 1}`).join(', ')})`)
+  return `INSERT INTO ${target} (${columns.map(q).join(', ')}) VALUES ${tuples.join(', ')}`
+}
+
+async function insertRowsInTransaction(pool: pg.Pool, target: string, columns: string[], rows: (string | null)[][], truncate: boolean): Promise<number> {
+  if (!columns.length) throw new Error('No column selected for the import')
+  const batchSize = Math.max(1, Math.min(MAX_ROWS_PER_INSERT, Math.floor(MAX_PARAMS / columns.length)))
+  const client = await pool.connect()
+  try {
+    await client.query('BEGIN')
+    if (truncate) await client.query(`TRUNCATE ${target}`)
+    for (let start = 0; start < rows.length; start += batchSize) {
+      const batch = rows.slice(start, start + batchSize)
+      await client.query(buildMultiRowInsert(target, columns, batch.length), batch.flat())
     }
+    await client.query('COMMIT')
+    return rows.length
+  } catch (e) {
+    await client.query('ROLLBACK').catch(() => {})
+    throw e
+  } finally {
+    client.release()
   }
 }
