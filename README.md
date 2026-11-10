@@ -45,6 +45,7 @@ A sample SQLite database is provided in [`samples/demo.db`](samples/demo.db) to 
 - **Inline editing**, row insertion and deletion, `NULL` support for nullable columns, drop-down editor for PostgreSQL enum columns.
 - Spreadsheet-like **cell and multi-row selection**, arrow-key navigation, **Ctrl+C copy**.
 - **Export to CSV or JSON** (whole table or query result).
+- **Import from CSV** into an existing table (e.g. a pgAdmin export): auto-detected delimiter, column mapping, `NULL` vs empty string, all rows in one transaction.
 - Table sub-views: **Columns**, **Foreign keys**, **Indexes**, **Triggers**, **DDL**, **DBML** and a per-table **ERD**.
 
 ### SQL editor
@@ -90,6 +91,7 @@ npm run dist       # package (AppImage on Linux, NSIS installer on Windows)
 
 ### Project layout
 - `src/main/drivers/` — one file per database engine, implementing `Driver` (`types.ts`). Register new engines in `index.ts`.
+- `src/main/csvImport.ts` — CSV parsing for imports (PostgreSQL `COPY ... CSV` semantics).
 - `src/main/ipc.ts` — IPC surface; `src/shared/types.ts` — the typed `Api` contract shared with the renderer.
 - `src/renderer/src/views/` — Table, Query, Diagram, Roles and Types views; each opens as a tab. The Table view hosts sub-views (Data, Columns, Foreign keys, Indexes, Triggers, DDL, DBML, ERD) in `views/table/`.
 
@@ -97,7 +99,7 @@ Tech stack: Electron, React 19, TypeScript, Tailwind CSS, CodeMirror, React Flow
 
 ## Roadmap
 
-Done: multi-connection ✅ · table viewer ✅ · inline edit/insert/delete ✅ · SQL scripts (run, saved query library) ✅ · ER diagram ✅ · table sub-views (structure, DDL, DBML, ERD) ✅ · keyboard shortcuts ✅ · grid selection with keyboard navigation and copy ✅ · CSV/JSON export ✅ · PostgreSQL roles ✅ · PostgreSQL user-defined types and enum editing ✅ · resizable panes ✅
+Done: multi-connection ✅ · table viewer ✅ · inline edit/insert/delete ✅ · SQL scripts (run, saved query library) ✅ · ER diagram ✅ · table sub-views (structure, DDL, DBML, ERD) ✅ · keyboard shortcuts ✅ · grid selection with keyboard navigation and copy ✅ · CSV/JSON export ✅ · CSV import ✅ · PostgreSQL roles ✅ · PostgreSQL user-defined types and enum editing ✅ · resizable panes ✅
 
 Next:
 - [ ] MySQL / MariaDB driver
