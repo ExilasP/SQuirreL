@@ -1,5 +1,5 @@
 /** Identifiers of the shortcuts handled globally by the app shell. */
-export type GlobalShortcutId = 'quickOpen' | 'newQuery' | 'closeTab' | 'nextTab' | 'previousTab'
+export type GlobalShortcutId = 'quickOpen' | 'find' | 'newQuery' | 'closeTab' | 'nextTab' | 'previousTab'
 
 export interface Shortcut {
   /** Set for shortcuts handled by `useGlobalShortcuts`; others are bound locally (e.g. in the editor) and only listed. */
@@ -12,6 +12,7 @@ export interface Shortcut {
 /** Single source of truth for the shortcuts, used both for matching and for the welcome screen. */
 export const SHORTCUTS: readonly Shortcut[] = [
   { id: 'quickOpen', keys: 'Mod+P', label: 'Search a table or saved query' },
+  { id: 'find', keys: 'Mod+F', label: 'Search schemas, tables, columns' },
   { id: 'newQuery', keys: 'Mod+N', label: 'New query' },
   { keys: 'Mod+Enter', label: 'Run query (or selection)' },
   { keys: 'Mod+S', label: 'Save query' },
