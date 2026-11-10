@@ -11,11 +11,14 @@ interface Props {
   onEscape?(): void
   /** Optional text shown at the right of the field, such as `2 / 5`. */
   status?: string
+  /** Flags a non-blank query that found nothing, in red. */
+  hasNoMatch?: boolean
   className?: string
 }
 
 /** Text field with a search icon and a clear button, targeted by Ctrl+F. */
-export const SearchField = forwardRef<HTMLInputElement, Props>(function SearchField({ value, placeholder, onChange, onKeyDown, onEscape, status, className }, ref) {
+export const SearchField = forwardRef<HTMLInputElement, Props>(function SearchField({ value, placeholder, onChange, onKeyDown, onEscape, status, hasNoMatch, className }, ref) {
+  const isNoMatch = !!value.trim() && !!hasNoMatch
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Escape') { event.preventDefault(); onChange(''); onEscape?.(); return }
     onKeyDown?.(event)
@@ -23,9 +26,9 @@ export const SearchField = forwardRef<HTMLInputElement, Props>(function SearchFi
   return (
     <div className={`relative ${className ?? ''}`}>
       <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-dim pointer-events-none" />
-      <input ref={ref} className="field !pl-8 !pr-16" placeholder={placeholder} value={value}
+      <input ref={ref} className={`field !pl-8 !pr-16 ${isNoMatch ? '!border-danger' : ''}`} placeholder={placeholder} value={value}
         onChange={(e) => onChange(e.target.value)} onKeyDown={handleKeyDown} />
-      <span className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 text-[11px] text-dim">
+      <span className={`absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 text-[11px] ${isNoMatch ? 'text-danger' : 'text-dim'}`}>
         {value && status}
         {value && <button className="hover:text-fg" title="Clear (Esc)" onClick={() => onChange('')}><X size={12} /></button>}
       </span>
