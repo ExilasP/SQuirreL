@@ -86,8 +86,8 @@ export function DataPane({ tab }: { tab: Extract<Tab, { kind: 'table' }> }) {
       <div className="flex items-center gap-2 px-3 h-12 border-b border-line">
         <input className="field !w-auto flex-1 min-w-40 max-w-96 font-mono" placeholder="WHERE …   e.g.  age > 30 AND name LIKE 'A%'" value={where}
           onChange={(e) => setWhere(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { setPage(0); setApplied(where) } }} />
-        <SearchField ref={columnSearchRef} className="w-48 shrink-0" placeholder="Find column…" value={columnSearch.query} onChange={columnSearch.setQuery}
-          status={`${columnSearch.position} / ${columnSearch.matches.size}`}
+        <SearchField ref={columnSearchRef} className="w-48 shrink-0" placeholder="Find column… (Ctrl+F)" value={columnSearch.query} onChange={columnSearch.setQuery}
+          status={`${columnSearch.position} / ${columnSearch.matches.size}`} hasNoMatch={columnSearch.matches.size === 0}
           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); columnSearch.step(e.shiftKey ? -1 : 1) } }} />
         <button className="btn" onClick={load} title="Refresh"><RefreshCw size={14} className={loading ? 'animate-spin' : ''} /></button>
         {editable && <>
