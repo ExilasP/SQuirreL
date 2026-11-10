@@ -1,33 +1,51 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react'
-import { Background, Controls, Handle, MarkerType, MiniMap, Position, ReactFlow, type Edge, type Node, type NodeProps } from '@xyflow/react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
+import { Background, Controls, Handle, MarkerType, MiniMap, Panel, Position, ReactFlow, useReactFlow, type Edge, type Node, type NodeProps } from '@xyflow/react'
 import dagre from '@dagrejs/dagre'
 import { Key, Link2 } from 'lucide-react'
 import type { SchemaGraph, TableDetail } from '@shared/types'
-import { columnKey, computeHighlight, filterGraphAround, type ErdHighlight, type ErdLink, type ErdSelection } from '@/lib/graph'
+import { columnKey, computeHighlight, filterGraphAround, listErdSearchTargets, matchesErdSearchTarget, type ErdHighlight, type ErdLink, type ErdSearchTarget, type ErdSelection } from '@/lib/graph'
 import { errMessage, useStore } from '@/lib/store'
+import { useFindScope } from '@/lib/findScopes'
+import { useCyclingSearch, type CyclingSearch } from '@/lib/useCyclingSearch'
+import { SearchField } from './SearchField'
 
 const W = 240, ROW = 22, HEAD = 34
 const EDGE_COLOR = '#7c8cff', EDGE_HIGHLIGHT_COLOR = '#ffb454'
 
+/** What the Ctrl+F search found, as drawn on the table nodes. */
+interface ErdSearchState {
+  tables: Set<string>
+  /** Keys built by {@link columnKey}. */
+  columns: Set<string>
+  current: ErdSearchTarget | null
+}
+
 interface ErdInteraction {
   highlight: ErdHighlight | null
+  search: ErdSearchState
   selectColumn: (table: string, column: string) => void
 }
 
-const ErdInteractionContext = createContext<ErdInteraction>({ highlight: null, selectColumn: () => {} })
+const NO_SEARCH: ErdSearchState = { tables: new Set(), columns: new Set(), current: null }
+const ErdInteractionContext = createContext<ErdInteraction>({ highlight: null, search: NO_SEARCH, selectColumn: () => {} })
+
+/** Classes of a search hit; the current one gets a stronger outline. */
+const searchHitClassName = (isMatch: boolean, isCurrent: boolean): string =>
+  isCurrent ? 'outline outline-2 -outline-offset-2 outline-[#ffb454] bg-[#ffb454]/20' : isMatch ? 'bg-[#ffb454]/15' : ''
 
 function TableNode({ data }: NodeProps<Node<{ t: TableDetail }>>) {
   const { t } = data
   const fkCols = new Set(t.foreignKeys.flatMap((f) => f.columns))
-  const { highlight, selectColumn } = useContext(ErdInteractionContext)
+  const { highlight, search, selectColumn } = useContext(ErdInteractionContext)
+  const isCurrentHit = (column?: string) => search.current?.table === t.name && search.current.column === column
   return (
     <div className="bg-panel border border-line rounded-lg overflow-hidden shadow-lg" style={{ width: W }}>
-      <div className="px-3 bg-raised font-semibold flex items-center" style={{ height: HEAD }}>{t.name}</div>
+      <div className={`px-3 bg-raised font-semibold flex items-center ${searchHitClassName(search.tables.has(t.name), isCurrentHit())}`} style={{ height: HEAD }}>{t.name}</div>
       {t.columns.map((c) => (
         <div
           key={c.name}
           onClick={(e) => { e.stopPropagation(); selectColumn(t.name, c.name) }}
-          className={`relative px-3 flex items-center gap-2 text-xs border-t border-line/60 cursor-pointer hover:bg-raised ${highlight?.columns.has(columnKey(t.name, c.name)) ? 'bg-accent/30' : ''}`}
+          className={`relative px-3 flex items-center gap-2 text-xs border-t border-line/60 cursor-pointer hover:bg-raised ${highlight?.columns.has(columnKey(t.name, c.name)) ? 'bg-accent/30' : ''} ${searchHitClassName(search.columns.has(columnKey(t.name, c.name)), isCurrentHit(c.name))}`}
           style={{ height: ROW }}
         >
           {c.primaryKey ? <Key size={11} className="text-accent shrink-0" /> : fkCols.has(c.name) ? <Link2 size={11} className="text-ok shrink-0" /> : <span className="w-[11px]" />}
@@ -43,7 +61,9 @@ function TableNode({ data }: NodeProps<Node<{ t: TableDetail }>>) {
 
 const nodeTypes = { table: TableNode }
 
-function layout(graph: SchemaGraph): { nodes: Node[]; edges: Edge[]; links: ErdLink[] } {
+interface ErdLayout { nodes: Node[]; edges: Edge[]; links: ErdLink[]; searchTargets: ErdSearchTarget[] }
+
+function layout(graph: SchemaGraph): ErdLayout {
   const g = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}))
   g.setGraph({ rankdir: 'LR', nodesep: 50, ranksep: 120 })
   const names = new Set(graph.tables.map((t) => t.name))
@@ -65,7 +85,41 @@ function layout(graph: SchemaGraph): { nodes: Node[]; edges: Edge[]; links: ErdL
     const p = g.node(t.name)
     return { id: t.name, type: 'table', position: { x: p.x - W / 2, y: p.y - p.height / 2 }, data: { t } }
   })
-  return { nodes, edges, links }
+  return { nodes, edges, links, searchTargets: listErdSearchTargets(graph.tables) }
+}
+
+/** Splits the search hits into the lookups used by {@link TableNode}. */
+function toSearchState(matches: ErdSearchTarget[], current: ErdSearchTarget | null): ErdSearchState {
+  const tables = new Set(matches.filter((m) => m.column === undefined).map((m) => m.table))
+  const columns = new Set(matches.flatMap((m) => (m.column === undefined ? [] : [columnKey(m.table, m.column)])))
+  return { tables, columns, current }
+}
+
+interface ErdSearchPanelProps {
+  search: CyclingSearch<ErdSearchTarget>
+  inputRef: RefObject<HTMLInputElement | null>
+}
+
+/** Ctrl+F field over the diagram; pans and zooms to the current hit. Must be rendered inside `ReactFlow`. */
+function ErdSearchPanel({ search, inputRef }: ErdSearchPanelProps) {
+  const { getNode, getZoom, setCenter } = useReactFlow()
+  const { current } = search
+  useEffect(() => {
+    if (!current) return
+    const node = getNode(current.table)
+    if (!node) return
+    const table = node.data.t as TableDetail
+    const columnIndex = current.column === undefined ? -1 : table.columns.findIndex((c) => c.name === current.column)
+    const y = node.position.y + (columnIndex === -1 ? HEAD / 2 : HEAD + columnIndex * ROW + ROW / 2)
+    void setCenter(node.position.x + W / 2, y, { zoom: Math.max(getZoom(), 1), duration: 300 })
+  }, [current, getNode, getZoom, setCenter])
+  return (
+    <Panel position="top-left">
+      <SearchField ref={inputRef} className="w-72" placeholder="Find table or column…" value={search.query} onChange={search.setQuery}
+        status={`${search.position} / ${search.matches.length}`}
+        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); search.step(e.shiftKey ? -1 : 1) } }} />
+    </Panel>
+  )
 }
 
 /** Applies the base or highlight styling to an edge depending on the current selection. */
@@ -80,6 +134,9 @@ function styleEdge(edge: Edge, highlight: ErdHighlight | null): Edge {
   }
 }
 
+/** Stable fallback so the search does not recompute while the diagram loads. */
+const NO_TARGETS: ErdSearchTarget[] = []
+
 interface ErdProps {
   connId: string
   schema: string
@@ -90,8 +147,12 @@ interface ErdProps {
 /** Entity-relationship diagram of a schema, or of one table and its neighbours. */
 export function Erd({ connId, schema, focusTable }: ErdProps) {
   const setError = useStore((s) => s.setError)
-  const [state, setState] = useState<{ nodes: Node[]; edges: Edge[]; links: ErdLink[] } | null>(null)
+  const [state, setState] = useState<ErdLayout | null>(null)
   const [selection, setSelection] = useState<ErdSelection | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  const search = useCyclingSearch(state?.searchTargets ?? NO_TARGETS, matchesErdSearchTarget)
+  useFindScope(containerRef, () => { searchInputRef.current?.focus(); searchInputRef.current?.select() })
 
   useEffect(() => {
     setSelection(null)
@@ -100,13 +161,17 @@ export function Erd({ connId, schema, focusTable }: ErdProps) {
 
   const highlight = useMemo(() => (state && selection ? computeHighlight(state.links, selection) : null), [state, selection])
   const edges = useMemo(() => state?.edges.map((e) => styleEdge(e, highlight)) ?? [], [state, highlight])
+  const searchState = useMemo(() => toSearchState(search.matches, search.current), [search.matches, search.current])
   const interaction = useMemo<ErdInteraction>(() => ({
     highlight,
+    search: searchState,
     selectColumn: (table, column) => setSelection({ kind: 'column', table, column })
-  }), [highlight])
+  }), [highlight, searchState])
 
-  if (!state) return <div className="h-full grid place-items-center text-dim">Loading diagram…</div>
+  // The container is mounted even while loading, so Ctrl+F never falls through to the sidebar.
   return (
+    <div ref={containerRef} className="h-full">
+    {!state ? <div className="h-full grid place-items-center text-dim">Loading diagram…</div> : (
     <ErdInteractionContext.Provider value={interaction}>
     <ReactFlow
       defaultNodes={state.nodes} edges={edges} nodeTypes={nodeTypes} fitView minZoom={0.1} colorMode="dark" proOptions={{ hideAttribution: true }}
@@ -117,7 +182,10 @@ export function Erd({ connId, schema, focusTable }: ErdProps) {
       <Background color="#262a35" gap={24} />
       <Controls showInteractive={false} />
       <MiniMap pannable zoomable maskColor="#0e0f13aa" nodeColor="#262a35" style={{ background: '#14161c' }} />
+      <ErdSearchPanel search={search} inputRef={searchInputRef} />
     </ReactFlow>
     </ErdInteractionContext.Provider>
+    )}
+    </div>
   )
 }
