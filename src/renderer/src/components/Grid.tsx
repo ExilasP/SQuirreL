@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ArrowDown, ArrowUp } from 'lucide-react'
 import { display } from '@/lib/format'
 import { CellEditor } from './CellEditor'
@@ -24,15 +24,32 @@ interface Props {
   selectionResetKey?: unknown
   /** Receives the indices of the selected rows (or of the active cell's row) whenever they change. */
   onSelectedRowsChange?(rows: number[]): void
+  /** Columns found by a column search; they are tinted from header to last row. */
+  matchedColumns?: Set<string>
+  /** Column search hit to emphasise and scroll into view. */
+  focusedColumn?: string | null
 }
+
+/** Header of a column found by the column search; opaque so the sticky header still hides scrolled rows. */
+const searchHeaderClassName = (isMatch: boolean, isCurrent: boolean): string =>
+  isCurrent ? 'bg-search-header-current text-search shadow-[inset_0_-3px_0_var(--color-search)]' : isMatch ? 'bg-search-header text-search' : 'bg-panel'
+
+/** Body cell of a column found by the column search. */
+const searchCellClassName = (isMatch: boolean, isCurrent: boolean): string =>
+  isCurrent ? 'bg-search/20' : isMatch ? 'bg-search/10' : ''
 
 /** Background of a body row depending on how it is selected. */
 const rowClassName = (isSelected: boolean, hasActiveCell: boolean): string =>
   isSelected ? 'bg-accent-soft' : hasActiveCell ? 'bg-raised/60' : 'hover:bg-raised/60'
 
-export function Grid({ columns, rows, pkColumns, nullableColumns, enumValuesByColumn, sort, onSort, onEdit, selectionResetKey, onSelectedRowsChange }: Props) {
+export function Grid({ columns, rows, pkColumns, nullableColumns, enumValuesByColumn, sort, onSort, onEdit, selectionResetKey, onSelectedRowsChange, matchedColumns, focusedColumn }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const headerRef = useRef<HTMLTableSectionElement>(null)
+  useEffect(() => {
+    if (!focusedColumn) return
+    const header = headerRef.current?.querySelector(`th[data-col="${columns.indexOf(focusedColumn)}"]`)
+    header?.scrollIntoView({ inline: 'center', block: 'nearest' })
+  }, [focusedColumn, columns])
   const [editing, setEditing] = useState<EditingCell | null>(null)
 
   const startEditing = ({ row, column }: CellPosition) => {
@@ -68,8 +85,9 @@ export function Grid({ columns, rows, pkColumns, nullableColumns, enumValuesByCo
           <tr>
             <th data-col={-1} className="bg-panel border-b border-r border-line text-dim text-right px-2 py-1.5 font-normal">#</th>
             {columns.map((c, ci) => (
-              <th key={c} data-col={ci} onClick={() => onSort?.(c)} className="bg-panel border-b border-r border-line px-3 py-1.5 text-left font-sans font-medium whitespace-nowrap cursor-pointer hover:bg-raised">
-                <span className={pkColumns?.has(c) ? 'text-accent' : ''}>{c}</span>
+              <th key={c} data-col={ci} onClick={() => onSort?.(c)}
+                className={`${searchHeaderClassName(!!matchedColumns?.has(c), focusedColumn === c)} border-b border-r border-line px-3 py-1.5 text-left font-sans font-medium whitespace-nowrap cursor-pointer hover:bg-raised`}>
+                <span className={pkColumns?.has(c) && !matchedColumns?.has(c) ? 'text-accent' : ''}>{c}</span>
                 {sort?.column === c && (sort.dir === 'asc' ? <ArrowUp size={11} className="inline ml-1" /> : <ArrowDown size={11} className="inline ml-1" />)}
               </th>
             ))}
@@ -84,7 +102,7 @@ export function Grid({ columns, rows, pkColumns, nullableColumns, enumValuesByCo
               <GridRow key={r} row={row} rowIndex={r} columns={columns} nullableColumns={nullableColumns} enumValuesByColumn={enumValuesByColumn}
                 isSelected={selection.selectedRows.has(r)}
                 activeColumn={selection.activeCell?.row === r ? selection.activeCell.column : null}
-                editing={rowEditing}
+                editing={rowEditing} matchedColumns={matchedColumns} focusedColumn={focusedColumn}
                 // The first rendered row gives the height of all rows, unless its editor makes it taller.
                 rowRef={offset === 0 && !rowEditing ? virtualRows.measureRow : undefined}
                 onSelectRow={selectRow} onSelectCell={selectCell} onStartEditing={startEditing}
@@ -114,6 +132,8 @@ interface GridRowProps {
   activeColumn: string | null
   /** Editor state when a cell of this row is being edited. */
   editing: EditingCell | null
+  matchedColumns?: Set<string>
+  focusedColumn?: string | null
   rowRef?(element: HTMLElement | null): void
   onSelectRow(row: number, mode: RowSelectMode): void
   onSelectCell(cell: CellPosition): void
@@ -126,7 +146,7 @@ interface GridRowProps {
 
 /** One body row of the grid: the `#` cell followed by the value cells. */
 function GridRow(props: GridRowProps) {
-  const { row, rowIndex: r, columns, nullableColumns, enumValuesByColumn, isSelected, activeColumn, editing, rowRef } = props
+  const { row, rowIndex: r, columns, nullableColumns, enumValuesByColumn, isSelected, activeColumn, editing, matchedColumns, focusedColumn, rowRef } = props
   return (
     <tr data-row={r} ref={rowRef} className={rowClassName(isSelected, activeColumn !== null)}>
       <td data-col={-1} title="Click to select the row (Ctrl to add, Shift for a range)"
@@ -139,7 +159,7 @@ function GridRow(props: GridRowProps) {
         return (
           <td key={c} data-col={ci} onClick={() => props.onSelectCell({ row: r, column: c })}
             onDoubleClick={() => props.onStartEditing({ row: r, column: c })}
-            className={`border-b border-r border-line px-3 py-1 truncate whitespace-nowrap ${activeColumn === c ? 'outline outline-1 -outline-offset-1 outline-accent' : ''}`}>
+            className={`border-b border-r border-line px-3 py-1 truncate whitespace-nowrap ${searchCellClassName(!!matchedColumns?.has(c), focusedColumn === c)} ${activeColumn === c ? 'outline outline-1 -outline-offset-1 outline-accent' : ''}`}>
             {editing?.c === c ? (
               <CellEditor value={editing.v} enumValues={enumValuesByColumn?.get(c)} isNullable={nullableColumns?.has(c) ?? false} onChange={props.onEditValueChange}
                 onCommit={props.onCommit} onCancel={props.onCancelEditing} onBlur={props.onBlurEditor} />

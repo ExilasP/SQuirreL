@@ -17,7 +17,7 @@ npm run dist       # package (AppImage)
 - `src/main/` : process Electron principal. `drivers/` contient un fichier par moteur de BDD implémentant `Driver` (`drivers/types.ts`), enregistré dans `drivers/index.ts`. `ipc.ts` expose les handlers IPC.
 - `src/preload/` : pont sécurisé entre main et renderer.
 - `src/shared/types.ts` : contrat d'API typé (`Api`) partagé. Toute nouvelle fonctionnalité IPC commence ici.
-- `src/renderer/src/` : UI React. `views/` (Table, Query, Diagram, un onglet chacune), `components/`, `lib/` (store zustand, utilitaires).
+- `src/renderer/src/` : UI React. `views/` (Table, Query, Diagram, un onglet chacune), `components/`, `lib/` (store zustand, utilitaires). Ctrl+F : chaque zone cherchable s'enregistre via `useFindScope` (`lib/findScopes.ts`).
 
 Ajouter un moteur de BDD : implémenter `Driver`, l'enregistrer dans `drivers/index.ts`, étendre `DriverId` dans `shared/types.ts`.
 
