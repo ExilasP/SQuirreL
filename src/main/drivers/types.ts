@@ -27,6 +27,15 @@ export interface Driver {
   update(change: RowChange): Promise<void>
   insert(schema: string, table: string, values: Record<string, unknown>): Promise<void>
   remove(schema: string, table: string, key: Record<string, unknown>): Promise<void>
+  /**
+   * Bulk-inserts rows in a single transaction, so a failing row rolls back the whole load.
+   *
+   * @param columns - Target columns, in the order of each row's values.
+   * @param rows - Values as text (cast by the engine to the column types) or `null`.
+   * @param options - `truncate` empties the table first, inside the same transaction.
+   * @returns The number of inserted rows.
+   */
+  insertRows(schema: string, table: string, columns: string[], rows: (string | null)[][], options: { truncate: boolean }): Promise<number>
 }
 
 export type DriverFactory = (config: ConnectionConfig) => Driver

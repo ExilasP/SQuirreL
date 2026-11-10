@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight, Plus, RefreshCw, Trash2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, RefreshCw, Trash2, Upload } from 'lucide-react'
 import type { QueryResult, TableDetail } from '@shared/types'
 import { errMessage, useStore, type Tab } from '@/lib/store'
 import { Grid } from '@/components/Grid'
 import { InsertDialog } from '@/components/InsertDialog'
 import { ExportMenu } from '@/components/ExportMenu'
+import { ImportDialog } from '@/components/ImportDialog'
 import { SearchField } from '@/components/SearchField'
 import { useFindScope } from '@/lib/findScopes'
 import { useColumnSearch } from '@/lib/useColumnSearch'
@@ -25,6 +26,8 @@ export function DataPane({ tab }: { tab: Extract<Tab, { kind: 'table' }> }) {
   const [selectedRows, setSelectedRows] = useState<number[]>([])
   const [loading, setLoading] = useState(false)
   const [inserting, setInserting] = useState(false)
+  const [importPath, setImportPath] = useState<string | null>(null)
+  const [importNote, setImportNote] = useState<string | null>(null)
 
   const detailRef = useRef<TableDetail | null>(null)
   const paneRef = useRef<HTMLDivElement>(null)
@@ -79,6 +82,15 @@ export function DataPane({ tab }: { tab: Extract<Tab, { kind: 'table' }> }) {
     await load()
   }
 
+  const pickImportFile = async () => {
+    try { setImportPath(await window.api.import.pickCsv()) } catch (e) { setError(errMessage(e)) }
+  }
+
+  const onImported = async (count: number) => {
+    setImportNote(`Imported ${count.toLocaleString()} rows`); setTimeout(() => setImportNote(null), 4000)
+    setPage(0); await load()
+  }
+
   const pages = Math.max(1, Math.ceil(total / PAGE))
 
   return (
@@ -95,6 +107,7 @@ export function DataPane({ tab }: { tab: Extract<Tab, { kind: 'table' }> }) {
           <button className="btn danger" disabled={!selectedRows.length} onClick={deleteSelectedRows}>
             <Trash2 size={14} /> Delete{selectedRows.length > 1 ? ` (${selectedRows.length})` : ''}
           </button>
+          <button className="btn" disabled={!detail} onClick={pickImportFile} title="Import rows from a CSV file"><Upload size={14} /> {importNote ?? 'Import'}</button>
         </>}
         <div className="ml-auto flex items-center gap-2 text-dim whitespace-nowrap">
           <ExportMenu run={(f) => window.api.export.table(tab.connId, { schema: tab.schema, table: tab.table, where: applied, orderBy: sort ?? (pks.size ? { column: [...pks][0], dir: 'asc' } : undefined) }, f)} />
@@ -117,6 +130,7 @@ export function DataPane({ tab }: { tab: Extract<Tab, { kind: 'table' }> }) {
         {res && <span className="ml-auto">{res.durationMs.toFixed(0)} ms</span>}
       </div>
       {inserting && detail && <InsertDialog detail={detail} onSubmit={insert} onClose={() => setInserting(false)} />}
+      {importPath && detail && <ImportDialog connId={tab.connId} detail={detail} path={importPath} onDone={onImported} onClose={() => setImportPath(null)} />}
     </div>
   )
 }
