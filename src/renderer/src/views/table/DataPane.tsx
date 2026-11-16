@@ -105,9 +105,11 @@ export function DataPane({ tab }: { tab: Extract<Tab, { kind: 'table' }> }) {
         <button className="btn" onClick={load} title="Refresh"><RefreshCw size={14} className={loading ? 'animate-spin' : ''} /></button>
         {editable && <>
           <button className="btn" onClick={() => setInserting(true)}><Plus size={14} /> Row</button>
-          <button className="btn danger" disabled={!selectedRows.length} onClick={deleteSelectedRows}>
-            <Trash2 size={14} /> Delete{selectedRows.length > 1 ? ` (${selectedRows.length})` : ''}
-          </button>
+          {selectedRows.length > 0 && (
+            <button className="btn danger" onClick={deleteSelectedRows}>
+              <Trash2 size={14} /> Delete{selectedRows.length > 1 ? ` (${selectedRows.length})` : ''}
+            </button>
+          )}
           <button className="btn" disabled={!detail} onClick={pickImportFile} title="Import rows from a CSV file"><Upload size={14} /> {importNote ?? 'Import'}</button>
         </>}
         <div className="ml-auto flex items-center gap-2 text-dim whitespace-nowrap">
