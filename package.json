@@ -36,6 +36,7 @@
     "build": "electron-vite build",
     "start": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
     "postinstall": "electron-builder install-app-deps",
     "dist": "npm run build && electron-builder"
   },
@@ -52,7 +53,8 @@
     "electron-vite": "^6.0.0",
     "tailwindcss": "^4.3.3",
     "typescript": "^7.0.2",
-    "vite": "^8.3.5"
+    "vite": "^8.3.5",
+    "vitest": "^5.1.0"
   },
   "dependencies": {
     "@codemirror/lang-sql": "^6.10.0",

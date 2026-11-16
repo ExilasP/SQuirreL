@@ -85,6 +85,7 @@ cd SQuirreL
 npm install
 npm run dev        # start in development mode
 npm run typecheck  # type-check the whole project
+npm test           # run the unit tests (vitest)
 npm run dist       # package (AppImage on Linux, NSIS installer on Windows)
 ```
 
