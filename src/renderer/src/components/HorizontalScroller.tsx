@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type HTMLAttributes, type ReactNode } from 'react'
 
-/** Props of {@link HorizontalScroller}. */
-export interface HorizontalScrollerProps {
+/** Props of {@link HorizontalScroller}; other attributes and handlers go to the scrolling row. */
+export interface HorizontalScrollerProps extends Omit<HTMLAttributes<HTMLDivElement>, 'onScroll' | 'onWheel'> {
   /** Classes of the scrolling row itself (height, alignment, gap, padding). */
   className?: string
   children: ReactNode
@@ -18,7 +18,7 @@ interface Overflow {
  *
  * The vertical mouse wheel scrolls it sideways, since there is no scrollbar left to drag.
  */
-export function HorizontalScroller({ className = '', children }: HorizontalScrollerProps) {
+export function HorizontalScroller({ className = '', children, ...rowProps }: HorizontalScrollerProps) {
   const rowRef = useRef<HTMLDivElement>(null)
   const [overflow, setOverflow] = useState<Overflow>({ hasLeft: false, hasRight: false })
 
@@ -48,7 +48,7 @@ export function HorizontalScroller({ className = '', children }: HorizontalScrol
 
   return (
     <div className="relative min-w-0">
-      <div ref={rowRef} className={`flex overflow-x-auto no-scrollbar ${className}`} onScroll={measure} onWheel={scrollWithWheel}>
+      <div {...rowProps} ref={rowRef} className={`flex overflow-x-auto no-scrollbar ${className}`} onScroll={measure} onWheel={scrollWithWheel}>
         {children}
       </div>
       <EdgeShadow side="left" isVisible={overflow.hasLeft} />
