@@ -3,6 +3,7 @@ import { parseConnectionKey } from '@shared/types'
 import { useStore, type Tab } from '@/lib/store'
 
 const icon = { table: Table2, query: FileCode2, diagram: Network, roles: Users, types: Shapes }
+const MIDDLE_BUTTON = 1
 
 /** Strip of open tabs above the main view. */
 export function TabBar() {
@@ -30,6 +31,9 @@ function TabItem({ tab, isActive, onActivate, onClose }: TabItemProps) {
   const conn = connections.find((c) => c.id === connId)
   return (
     <div onClick={onActivate}
+      // Middle-click closes the tab, as in browsers; preventing mousedown stops the autoscroll cursor.
+      onMouseDown={(e) => { if (e.button === MIDDLE_BUTTON) e.preventDefault() }}
+      onAuxClick={(e) => { if (e.button === MIDDLE_BUTTON) onClose() }}
       className={`group flex items-center gap-2 h-10 px-3 cursor-pointer border-t-2 whitespace-nowrap ${isActive ? 'bg-bg border-accent text-fg' : 'border-transparent text-dim hover:text-fg'}`}>
       <Icon size={13} /> {tab.title}{tab.kind === 'query' && tab.sql !== tab.savedSql && <span className="text-accent" title="Unsaved changes">●</span>}
       <span className="text-[10px] text-dim">{conn?.name}{database && ` · ${database}`}</span>
