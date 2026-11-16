@@ -1,131 +1,55 @@
-import { useRef, useState, type CSSProperties } from 'react'
-import { useStore, type Tab } from '@/lib/store'
-import { paneOf, type Layout, type PaneIndex, type SplitSide } from '@/lib/panes'
-import { useResizable } from '@/lib/useResizable'
-import { useTabDrag } from '@/lib/useTabDrag'
-import { TableView } from '@/views/TableView'
-import { QueryView } from '@/views/QueryView'
-import { DiagramView } from '@/views/DiagramView'
-import { RolesView } from '@/views/RolesView'
-import { TypesView } from '@/views/TypesView'
+import { useRef } from 'react'
+import { computeGeometry, type PaneBox } from '@/lib/paneGeometry'
+import { paneOf } from '@/lib/panes'
+import { useStore } from '@/lib/store'
+import { useElementSize } from '@/lib/useElementSize'
+import { Welcome } from '../Welcome'
+import { PaneDivider } from './PaneDivider'
+import { PaneDropOverlay } from './PaneDropOverlay'
 import { TabBar } from './TabBar'
-import { Welcome } from './Welcome'
-import { ResizeHandle } from './ResizeHandle'
-
-/** Narrowest a pane may get, so its tab strip and toolbar stay usable. */
-const MIN_PANE_WIDTH = 240
-
-// Width of the left pane, as a CSS length clamped to the workspace (100% resolves against it).
-const splitPosition = (leftWidth: number) => `min(${leftWidth}px, calc(100% - ${MIN_PANE_WIDTH}px))`
-
-/** Horizontal extent of a pane inside the workspace. */
-function paneBox(layout: Layout, pane: PaneIndex): CSSProperties {
-  if (layout.panes.length === 1) return { left: 0, right: 0 }
-  return pane === 0 ? { left: 0, width: 'var(--split)' } : { left: 'var(--split)', right: 0 }
-}
+import { TabContent } from './TabContent'
+import { rectStyle, TAB_STRIP_HEIGHT } from './rectStyle'
 
 /**
- * Tab strips and views of the open tabs, in one pane or two side by side.
+ * Open tabs laid out as a tree of horizontal and vertical splits.
  *
- * Every view stays mounted in a single layer and is only positioned over its pane,
- * so moving a tab to the other pane keeps its state (query results, scroll, edits).
+ * Every view stays mounted in a single layer and is only positioned over its pane, so moving
+ * a tab to another pane keeps its state (query results, scroll, edits).
  */
 export function Workspace() {
-  const { tabs, layout, focusPane } = useStore()
-  const isSplit = layout.panes.length === 2
+  const { tabs, layout } = useStore()
   const workspaceRef = useRef<HTMLDivElement>(null)
-  const { size: leftWidth, handleProps } = useResizable({
-    storageKey: 'squirrel.splitWidth', axis: 'x', initialSize: 600, minSize: MIN_PANE_WIDTH,
-    maxSize: () => (workspaceRef.current?.clientWidth ?? window.innerWidth) - MIN_PANE_WIDTH,
-  })
+  const workspaceSize = useElementSize(workspaceRef)
+  const { panes, dividers } = computeGeometry(layout.root)
+  const isSplit = panes.length > 1
 
   return (
-    <div ref={workspaceRef} className="flex-1 min-w-0 flex flex-col" style={{ '--split': splitPosition(leftWidth) } as CSSProperties}>
-      <div className="flex">
-        {layout.panes.map((_, i) => {
-          const pane = i as PaneIndex
-          return (
-            <div key={pane} className={`min-w-0 ${isSplit && pane === 0 ? 'shrink-0 border-r border-line' : 'flex-1'}`} style={isSplit && pane === 0 ? { width: 'var(--split)' } : undefined}>
-              <TabBar pane={pane} isFocused={!isSplit || layout.focusedPane === pane} />
-            </div>
-          )
-        })}
-      </div>
-      <div className="flex-1 min-h-0 relative">
-        {tabs.map((t) => {
-          const pane = paneOf(layout, t.id)
-          if (pane === -1) return null
-          const isVisible = layout.panes[pane].activeTabId === t.id
-          return (
-            <div key={t.id} className={`absolute inset-y-0 ${isVisible ? '' : 'hidden'}`} style={paneBox(layout, pane)} onMouseDownCapture={() => focusPane(pane)}>
-              <TabContent tab={t} />
-            </div>
-          )
-        })}
-        {isSplit && (
-          <div className="absolute inset-y-0 w-px bg-line" style={{ left: 'var(--split)' }}>
-            <ResizeHandle {...handleProps} />
-          </div>
-        )}
-        {tabs.length === 0 && <Welcome />}
-        <SplitDropZones />
-      </div>
+    <div ref={workspaceRef} className="relative flex-1 min-w-0 overflow-hidden">
+      {panes.map(({ pane, rect }) => (
+        <div key={pane.id} className="absolute" style={{ ...rectStyle(rect), height: TAB_STRIP_HEIGHT }}>
+          <TabBar paneId={pane.id} isFocused={!isSplit || layout.focusedPaneId === pane.id} />
+        </div>
+      ))}
+      {tabs.map((tab) => {
+        const box = panes.find((b) => b.pane.id === paneOf(layout, tab.id)?.id)
+        return box && <TabView key={tab.id} tabId={tab.id} box={box} />
+      })}
+      {tabs.length === 0 && <div className="absolute inset-x-0 bottom-0" style={{ top: TAB_STRIP_HEIGHT }}><Welcome /></div>}
+      {dividers.map((divider) => <PaneDivider key={`${divider.splitId}:${divider.boundary}`} divider={divider} workspaceSize={workspaceSize} />)}
+      {panes.map(({ pane, rect }) => <PaneDropOverlay key={pane.id} paneId={pane.id} rect={rect} />)}
     </div>
   )
 }
 
-function TabContent({ tab }: { tab: Tab }) {
-  switch (tab.kind) {
-    case 'table': return <TableView tab={tab} />
-    case 'query': return <QueryView tab={tab} />
-    case 'diagram': return <DiagramView tab={tab} />
-    case 'roles': return <RolesView tab={tab} />
-    case 'types': return <TypesView tab={tab} />
-  }
-}
-
-/** Area of the workspace a dragged tab can be dropped on, and what dropping does. */
-interface DropZone {
-  id: string
-  style: CSSProperties
-  drop(tabId: string): void
-}
-
-/** Drop targets for the dragged tab: split halves with a single pane, the other pane when split. */
-function dropZonesFor(layout: Layout, draggedTabId: string, actions: { splitTab(id: string, side: SplitSide): void; moveTab(id: string, pane: PaneIndex, position: number): void }): DropZone[] {
-  const source = paneOf(layout, draggedTabId)
-  if (source === -1) return []
-  if (layout.panes.length === 1) {
-    // Splitting away a pane's only tab would leave the other side empty.
-    if (layout.panes[0].tabIds.length < 2) return []
-    return (['left', 'right'] as const).map((side) => ({
-      id: side,
-      style: side === 'left' ? { left: 0, width: '50%' } : { left: '50%', right: 0 },
-      drop: (id) => actions.splitTab(id, side),
-    }))
-  }
-  const target: PaneIndex = source === 0 ? 1 : 0
-  return [{ id: `pane-${target}`, style: paneBox(layout, target), drop: (id) => actions.moveTab(id, target, layout.panes[target].tabIds.length) }]
-}
-
-/** Overlay shown while a tab is dragged; it sits above the views so editors do not swallow the drag. */
-function SplitDropZones() {
-  const { layout, splitTab, moveTab } = useStore()
-  const { draggedTabId, setDraggedTabId } = useTabDrag()
-  const [hoveredZoneId, setHoveredZoneId] = useState<string | null>(null)
-  if (!draggedTabId) return null
-
-  const zones = dropZonesFor(layout, draggedTabId, { splitTab, moveTab })
+/** View of one tab, placed under its pane's tab strip and shown only while it is the pane's active tab. */
+function TabView({ tabId, box }: { tabId: string; box: PaneBox }) {
+  const tab = useStore((s) => s.tabs.find((t) => t.id === tabId))
+  const focusPane = useStore((s) => s.focusPane)
+  if (!tab) return null
+  const isVisible = box.pane.activeTabId === tabId
   return (
-    <>
-      {zones.map((zone) => (
-        <div key={zone.id} className="absolute inset-y-0 z-30 p-1" style={zone.style}
-          onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setHoveredZoneId(zone.id) }}
-          onDragLeave={() => setHoveredZoneId(null)}
-          onDrop={(e) => { e.preventDefault(); zone.drop(draggedTabId); setHoveredZoneId(null); setDraggedTabId(null) }}>
-          <div className={`pointer-events-none h-full rounded-lg border-2 border-dashed transition-colors ${hoveredZoneId === zone.id ? 'border-accent bg-accent-soft' : 'border-transparent'}`} />
-        </div>
-      ))}
-    </>
+    <div className={`absolute overflow-hidden ${isVisible ? '' : 'hidden'}`} style={rectStyle(box.rect, TAB_STRIP_HEIGHT)} onMouseDownCapture={() => focusPane(box.pane.id)}>
+      <TabContent tab={tab} />
+    </div>
   )
 }

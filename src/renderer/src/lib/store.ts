@@ -1,6 +1,9 @@
 import { create } from 'zustand'
 import { databaseKey, parseConnectionKey, type ConnectionConfig, type SavedQuery, type TableRef } from '@shared/types'
-import { EMPTY_LAYOUT, activateTab, activeTabId, closeTabsIn, focusPane, moveTabTo, openTabIn, selectInFocusedPane, splitTabTo, type Layout, type PaneIndex, type SplitSide } from './panes'
+import {
+  activateTab, activeTabId, closeTabsIn, createEmptyLayout, equalizeSplit, focusPane, moveTabTo, openTabIn, resizeSplit,
+  selectInFocusedPane, splitTabTo, type Layout, type SplitEdge,
+} from './panes'
 
 export type Tab =
   | { id: string; kind: 'table'; connId: string; schema: string; table: string; title: string }
@@ -54,12 +57,16 @@ interface State {
   /** Activates the tab at `index` in the focused pane, if any. */
   goToTab(index: number): void
   closeTab(id: string): void
-  /** Moves a tab to `position` in the strip of pane `pane`. */
-  moveTab(id: string, pane: PaneIndex, position: number): void
-  /** Sends a tab to the left or right pane, splitting the workspace if needed. */
-  splitTab(id: string, side: SplitSide): void
+  /** Moves a tab to `position` in the strip of a pane. */
+  moveTab(id: string, paneId: string, position: number): void
+  /** Moves a tab into a new pane on one edge of `paneId`. */
+  splitTab(id: string, paneId: string, edge: SplitEdge): void
   setActive(id: string): void
-  focusPane(pane: PaneIndex): void
+  focusPane(paneId: string): void
+  /** Sets the shares of a split's children (see `moveBoundary`). */
+  resizeSplit(splitId: string, sizes: readonly number[]): void
+  /** Gives every child of a split the same share. */
+  equalizeSplit(splitId: string): void
   /** Saves a query tab to the library; `name` is required the first time. */
   saveQueryTab(tabId: string, name?: string): Promise<void>
   openSavedQuery(q: SavedQuery): void
@@ -81,7 +88,7 @@ function withoutConnectionTabs({ tabs, layout }: Pick<State, 'tabs' | 'layout'>,
 const msg = (e: unknown) => (e as Error).message.replace(/^Error invoking remote method '[^']+': (Error: )?/i, '')
 
 export const useStore = create<State>((set, get) => ({
-  connections: [], savedQueries: [], opened: {}, tabs: [], layout: EMPTY_LAYOUT, error: null,
+  connections: [], savedQueries: [], opened: {}, tabs: [], layout: createEmptyLayout(), error: null,
   async init() {
     const [connections, savedQueries] = await Promise.all([window.api.connections.list(), window.api.queries.list()])
     set({ connections, savedQueries })
@@ -159,9 +166,11 @@ export const useStore = create<State>((set, get) => ({
   closeTab(id) {
     set((s) => ({ tabs: s.tabs.filter((t) => t.id !== id), layout: closeTabsIn(s.layout, [id]) }))
   },
-  moveTab: (id, pane, position) => set((s) => ({ layout: moveTabTo(s.layout, id, pane, position) })),
-  splitTab: (id, side) => set((s) => ({ layout: splitTabTo(s.layout, id, side) })),
-  focusPane: (pane) => set((s) => ({ layout: focusPane(s.layout, pane) })),
+  moveTab: (id, paneId, position) => set((s) => ({ layout: moveTabTo(s.layout, id, paneId, position) })),
+  splitTab: (id, paneId, edge) => set((s) => ({ layout: splitTabTo(s.layout, id, paneId, edge) })),
+  focusPane: (paneId) => set((s) => (s.layout.focusedPaneId === paneId ? s : { layout: focusPane(s.layout, paneId) })),
+  resizeSplit: (splitId, sizes) => set((s) => ({ layout: resizeSplit(s.layout, splitId, sizes) })),
+  equalizeSplit: (splitId) => set((s) => ({ layout: equalizeSplit(s.layout, splitId) })),
   async saveQueryTab(tabId, name) {
     const tab = get().tabs.find((t) => t.id === tabId)
     if (tab?.kind !== 'query') return
