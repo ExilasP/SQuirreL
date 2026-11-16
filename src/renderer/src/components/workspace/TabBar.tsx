@@ -4,8 +4,8 @@ import { parseConnectionKey } from '@shared/types'
 import { useStore, type Tab } from '@/lib/store'
 import { dropIndex, type DropSide } from '@/lib/reorder'
 import { useTabDrag } from '@/lib/useTabDrag'
-import { HorizontalScroller } from './HorizontalScroller'
-import type { PaneIndex } from '@/lib/panes'
+import { findPane } from '@/lib/panes'
+import { HorizontalScroller } from '../HorizontalScroller'
 
 const icon = { table: Table2, query: FileCode2, diagram: Network, roles: Users, types: Shapes }
 const MIDDLE_BUTTON = 1
@@ -18,17 +18,17 @@ interface DropHint {
 
 /** Props of {@link TabBar}. */
 export interface TabBarProps {
-  pane: PaneIndex
+  paneId: string
   /** Whether this pane receives keyboard shortcuts and new tabs; only then is its active tab highlighted. */
   isFocused: boolean
 }
 
-/** Tab strip of one pane; tabs can be reordered, or dragged into the other pane's strip. */
-export function TabBar({ pane, isFocused }: TabBarProps) {
+/** Tab strip of one pane; tabs can be reordered, or dragged into another pane's strip. */
+export function TabBar({ paneId, isFocused }: TabBarProps) {
   const { tabs, layout, setActive, closeTab, moveTab } = useStore()
   const { draggedTabId, setDraggedTabId } = useTabDrag()
   const [dropHint, setDropHint] = useState<DropHint | null>(null)
-  const { tabIds, activeTabId } = layout.panes[pane]
+  const { tabIds = [], activeTabId = null } = findPane(layout, paneId) ?? {}
   const paneTabs = tabIds.map((id) => tabs.find((t) => t.id === id)).filter((t): t is Tab => !!t)
 
   const endDrag = () => { setDraggedTabId(null); setDropHint(null) }
@@ -39,9 +39,9 @@ export function TabBar({ pane, isFocused }: TabBarProps) {
     const targetIndex = tabIds.indexOf(targetId)
     if (!draggedTabId || targetIndex === -1) return endDrag()
     const fromIndex = tabIds.indexOf(draggedTabId)
-    // A tab coming from the other pane is inserted, nothing shifts in this strip.
+    // A tab coming from another pane is inserted, nothing shifts in this strip.
     const position = fromIndex === -1 ? targetIndex + (side === 'after' ? 1 : 0) : dropIndex(fromIndex, targetIndex, side)
-    moveTab(draggedTabId, pane, position)
+    moveTab(draggedTabId, paneId, position)
     endDrag()
   }
 
@@ -49,7 +49,7 @@ export function TabBar({ pane, isFocused }: TabBarProps) {
   const dropAtEnd = (e: DragEvent<HTMLElement>) => {
     if (e.target !== e.currentTarget || !draggedTabId) return
     e.preventDefault()
-    moveTab(draggedTabId, pane, tabIds.includes(draggedTabId) ? tabIds.length - 1 : tabIds.length)
+    moveTab(draggedTabId, paneId, tabIds.includes(draggedTabId) ? tabIds.length - 1 : tabIds.length)
     endDrag()
   }
 

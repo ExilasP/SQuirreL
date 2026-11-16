@@ -4,7 +4,7 @@ import { useStore } from '@/lib/store'
 import { useGlobalShortcuts } from '@/lib/useGlobalShortcuts'
 import { Sidebar } from '@/components/Sidebar'
 import { QuickOpen } from '@/components/QuickOpen'
-import { Workspace } from '@/components/Workspace'
+import { Workspace } from '@/components/workspace/Workspace'
 
 export function App() {
   const { init, error, setError } = useStore()
