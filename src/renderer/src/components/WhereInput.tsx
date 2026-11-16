@@ -9,6 +9,8 @@ interface Props {
   onChange(value: string): void
   /** Called on Enter when no suggestion is being picked. */
   onSubmit(): void
+  /** Classes for the wrapper, which sizes the field (the input fills it). */
+  className?: string
 }
 
 /**
@@ -17,7 +19,7 @@ interface Props {
  * Suggestions appear while typing a name (or on Ctrl+Space); ↑/↓ browse them,
  * Tab or Enter insert the highlighted one and Escape dismisses the list.
  */
-export function WhereInput({ value, columns, onChange, onSubmit }: Props) {
+export function WhereInput({ value, columns, onChange, onSubmit, className = '' }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [caret, setCaret] = useState(0)
   /** `typing` lists matches only once a name is started; `forced` (Ctrl+Space) also lists every column on an empty prefix. */
@@ -54,13 +56,13 @@ export function WhereInput({ value, columns, onChange, onSubmit }: Props) {
   }
 
   return (
-    <div className="relative">
-      <input ref={inputRef} className="field !w-96 font-mono" placeholder="WHERE …   e.g.  age > 30 AND name LIKE 'A%'" value={value}
+    <div className={`relative ${className}`}>
+      <input ref={inputRef} className="field font-mono" placeholder="WHERE …   e.g.  age > 30 AND name LIKE 'A%'" value={value}
         spellCheck={false} autoComplete="off" role="combobox" aria-expanded={isShowingSuggestions} aria-autocomplete="list"
         onChange={(e) => { onChange(e.target.value); setCaret(e.target.selectionStart ?? 0); setCursor(0); setOpenMode('typing') }}
         onSelect={syncCaret} onKeyDown={onKeyDown} onBlur={() => setOpenMode('closed')} />
       {isShowingSuggestions && (
-        <div role="listbox" className="absolute left-0 top-full mt-1 z-20 w-96 max-h-64 overflow-auto bg-raised border border-line rounded-lg shadow-xl p-1 font-mono text-[12.5px]">
+        <div role="listbox" className="absolute left-0 top-full mt-1 z-20 min-w-full w-max max-w-96 max-h-64 overflow-auto bg-raised border border-line rounded-lg shadow-xl p-1 font-mono text-[12.5px]">
           {suggestions.map((column, i) => (
             <div key={column.name} role="option" aria-selected={i === cursor}
               ref={(el) => { if (i === cursor) el?.scrollIntoView({ block: 'nearest' }) }}
