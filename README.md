@@ -41,7 +41,7 @@ A sample SQLite database is provided in [`samples/demo.db`](samples/demo.db) to 
 - PostgreSQL **user-defined types** (enum, composite, domain, range) browsable per schema.
 
 ### Table viewer & data editor
-- Paginated, sortable data grid with a raw `WHERE` filter.
+- Paginated, sortable data grid with a raw `WHERE` filter (column-name autocompletion, Ctrl+Space to list all).
 - **Inline editing**, row insertion and deletion, `NULL` support for nullable columns, drop-down editor for PostgreSQL enum columns.
 - Spreadsheet-like **cell and multi-row selection**, arrow-key navigation, **Ctrl+C copy**.
 - **Export to CSV or JSON** (whole table or query result).

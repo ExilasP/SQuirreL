@@ -5,6 +5,7 @@ import { errMessage, useStore, type Tab } from '@/lib/store'
 import { Grid } from '@/components/Grid'
 import { InsertDialog } from '@/components/InsertDialog'
 import { ExportMenu } from '@/components/ExportMenu'
+import { WhereInput } from '@/components/WhereInput'
 
 const PAGE = 200
 
@@ -75,8 +76,7 @@ export function DataPane({ tab }: { tab: Extract<Tab, { kind: 'table' }> }) {
   return (
     <div className="h-full flex flex-col">
       <div className="flex items-center gap-2 px-3 h-12 border-b border-line">
-        <input className="field !w-96 font-mono" placeholder="WHERE …   e.g.  age > 30 AND name LIKE 'A%'" value={where}
-          onChange={(e) => setWhere(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { setPage(0); setApplied(where) } }} />
+        <WhereInput value={where} columns={detail?.columns ?? []} onChange={setWhere} onSubmit={() => { setPage(0); setApplied(where) }} />
         <button className="btn" onClick={load} title="Refresh"><RefreshCw size={14} className={loading ? 'animate-spin' : ''} /></button>
         {editable && <>
           <button className="btn" onClick={() => setInserting(true)}><Plus size={14} /> Row</button>
