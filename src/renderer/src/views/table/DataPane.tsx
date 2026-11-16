@@ -5,6 +5,7 @@ import { errMessage, useStore, type Tab } from '@/lib/store'
 import { Grid } from '@/components/Grid'
 import { InsertDialog } from '@/components/InsertDialog'
 import { ExportMenu } from '@/components/ExportMenu'
+import { WhereInput } from '@/components/WhereInput'
 import { ImportDialog } from '@/components/ImportDialog'
 import { SearchField } from '@/components/SearchField'
 import { useFindScope } from '@/lib/findScopes'
@@ -96,8 +97,8 @@ export function DataPane({ tab }: { tab: Extract<Tab, { kind: 'table' }> }) {
   return (
     <div ref={paneRef} className="h-full flex flex-col">
       <div className="flex items-center gap-2 px-3 h-12 border-b border-line">
-        <input className="field !w-auto flex-1 min-w-40 max-w-96 font-mono" placeholder="WHERE …   e.g.  age > 30 AND name LIKE 'A%'" value={where}
-          onChange={(e) => setWhere(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { setPage(0); setApplied(where) } }} />
+        <WhereInput className="flex-1 min-w-40 max-w-96" value={where} columns={detail?.columns ?? []} onChange={setWhere}
+          onSubmit={() => { setPage(0); setApplied(where) }} />
         <SearchField ref={columnSearchRef} className="w-48 shrink-0" placeholder="Find column… (Ctrl+F)" value={columnSearch.query} onChange={columnSearch.setQuery}
           status={`${columnSearch.position} / ${columnSearch.matches.size}`} hasNoMatch={columnSearch.matches.size === 0}
           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); columnSearch.step(e.shiftKey ? -1 : 1) } }} />
