@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { activeTabId } from './panes'
 import { useStore } from './store'
 import { runFind } from './findScopes'
 import { SHORTCUTS, matchesShortcut, type GlobalShortcutId } from './shortcuts'
@@ -16,7 +17,7 @@ export function useGlobalShortcuts(handlers: { onQuickOpen(): void }): void {
       quickOpen: handlers.onQuickOpen,
       find: () => runFind(document.activeElement),
       newQuery: () => useStore.getState().newQueryOnActiveConnection(),
-      closeTab: () => { const { activeTab, closeTab } = useStore.getState(); if (activeTab) closeTab(activeTab) },
+      closeTab: () => { const { layout, closeTab } = useStore.getState(); const activeTab = activeTabId(layout); if (activeTab) closeTab(activeTab) },
       nextTab: () => useStore.getState().cycleTab(1),
       previousTab: () => useStore.getState().cycleTab(-1)
     }
