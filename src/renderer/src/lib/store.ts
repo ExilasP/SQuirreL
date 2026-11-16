@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { databaseKey, parseConnectionKey, type ConnectionConfig, type SavedQuery, type TableRef } from '@shared/types'
+import { moveItem } from './reorder'
 
 export type Tab =
   | { id: string; kind: 'table'; connId: string; schema: string; table: string; title: string }
@@ -52,6 +53,8 @@ interface State {
   /** Activates the tab at `index`, if any. */
   goToTab(index: number): void
   closeTab(id: string): void
+  /** Moves a tab to `toIndex` in the tab strip. */
+  moveTab(id: string, toIndex: number): void
   setActive(id: string): void
   /** Saves a query tab to the library; `name` is required the first time. */
   saveQueryTab(tabId: string, name?: string): Promise<void>
@@ -149,6 +152,11 @@ export const useStore = create<State>((set, get) => ({
     const { tabs, activeTab } = get(); const i = tabs.findIndex((t) => t.id === id)
     const next = tabs.filter((t) => t.id !== id)
     set({ tabs: next, activeTab: activeTab === id ? (next[Math.min(i, next.length - 1)]?.id ?? null) : activeTab })
+  },
+  moveTab(id, toIndex) {
+    const { tabs } = get(); const fromIndex = tabs.findIndex((t) => t.id === id)
+    if (fromIndex === -1 || fromIndex === toIndex) return
+    set({ tabs: moveItem(tabs, fromIndex, toIndex) })
   },
   async saveQueryTab(tabId, name) {
     const tab = get().tabs.find((t) => t.id === tabId)
