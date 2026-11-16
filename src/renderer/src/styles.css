@@ -82,3 +82,7 @@ input, textarea, .cm-editor { user-select: text; }
 }
 .cm-tooltip-autocomplete .cm-completionDetail { color: var(--color-dim); margin-left: auto; font-style: normal; }
 .cm-completionIcon { opacity: 0.7; width: 1em; padding: 0; }
+
+/* Hides the scrollbar of a row that stays scrollable (see HorizontalScroller). */
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
