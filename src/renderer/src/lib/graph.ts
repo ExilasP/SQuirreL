@@ -1,4 +1,5 @@
-import type { SchemaGraph } from '@shared/types'
+import type { SchemaGraph, TableDetail } from '@shared/types'
+import { matchesQuery } from './search'
 
 /**
  * Restricts a schema graph to one table and the tables directly linked to it
@@ -79,4 +80,25 @@ export function computeHighlight(links: ErdLink[], selection: ErdSelection): Erd
     if (fromIndex >= 0 || toIndex >= 0) highlight.linkIds.add(link.id)
   }
   return highlight
+}
+
+/** A table, or one of its columns, that the ERD search can find. */
+export interface ErdSearchTarget {
+  table: string
+  /** Set for a column, absent for the table itself. */
+  column?: string
+}
+
+/**
+ * Lists what the ERD search looks through: each table followed by its columns.
+ *
+ * @param tables - Tables drawn in the diagram, in display order.
+ */
+export function listErdSearchTargets(tables: TableDetail[]): ErdSearchTarget[] {
+  return tables.flatMap((t) => [{ table: t.name }, ...t.columns.map((c) => ({ table: t.name, column: c.name }))])
+}
+
+/** Whether a table or column name matches the ERD search query. */
+export function matchesErdSearchTarget(target: ErdSearchTarget, query: string): boolean {
+  return matchesQuery(target.column ?? target.table, query)
 }
