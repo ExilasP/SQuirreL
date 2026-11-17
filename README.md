@@ -85,6 +85,7 @@ cd SQuirreL
 npm install
 npm run dev        # start in development mode
 npm run typecheck  # type-check the whole project
+npm test           # run the unit tests (vitest)
 npm run dist       # package (AppImage on Linux, NSIS installer on Windows)
 ```
 
@@ -97,7 +98,7 @@ Tech stack: Electron, React 19, TypeScript, Tailwind CSS, CodeMirror, React Flow
 
 ## Roadmap
 
-Done: multi-connection ✅ · table viewer ✅ · inline edit/insert/delete ✅ · SQL scripts (run, saved query library) ✅ · ER diagram ✅ · table sub-views (structure, DDL, DBML, ERD) ✅ · keyboard shortcuts ✅ · grid selection with keyboard navigation and copy ✅ · CSV/JSON export ✅ · PostgreSQL roles ✅ · PostgreSQL user-defined types and enum editing ✅ · resizable panes ✅ · Ctrl+F search (sidebar schemas and tables, table columns, data grid columns, ERD tables and columns) ✅
+Done: multi-connection ✅ · table viewer ✅ · inline edit/insert/delete ✅ · SQL scripts (run, saved query library) ✅ · ER diagram ✅ · table sub-views (structure, DDL, DBML, ERD) ✅ · keyboard shortcuts ✅ · grid selection with keyboard navigation and copy ✅ · CSV/JSON export ✅ · PostgreSQL roles ✅ · PostgreSQL user-defined types and enum editing ✅ · resizable panes ✅ · draggable tabs and nested horizontal/vertical split view ✅ · Ctrl+F search (sidebar schemas and tables, table columns, data grid columns, ERD tables and columns) ✅
 
 Next:
 - [ ] MySQL / MariaDB driver

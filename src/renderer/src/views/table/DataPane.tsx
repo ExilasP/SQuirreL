@@ -92,9 +92,11 @@ export function DataPane({ tab }: { tab: Extract<Tab, { kind: 'table' }> }) {
         <button className="btn" onClick={load} title="Refresh"><RefreshCw size={14} className={loading ? 'animate-spin' : ''} /></button>
         {editable && <>
           <button className="btn" onClick={() => setInserting(true)}><Plus size={14} /> Row</button>
-          <button className="btn danger" disabled={!selectedRows.length} onClick={deleteSelectedRows}>
-            <Trash2 size={14} /> Delete{selectedRows.length > 1 ? ` (${selectedRows.length})` : ''}
-          </button>
+          {selectedRows.length > 0 && (
+            <button className="btn danger" onClick={deleteSelectedRows}>
+              <Trash2 size={14} /> Delete{selectedRows.length > 1 ? ` (${selectedRows.length})` : ''}
+            </button>
+          )}
         </>}
         <div className="ml-auto flex items-center gap-2 text-dim whitespace-nowrap">
           <ExportMenu run={(f) => window.api.export.table(tab.connId, { schema: tab.schema, table: tab.table, where: applied, orderBy: sort ?? (pks.size ? { column: [...pks][0], dir: 'asc' } : undefined) }, f)} />
