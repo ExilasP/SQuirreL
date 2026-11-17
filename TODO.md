@@ -3,7 +3,6 @@
 ## Config
 
 - Trouver un logo
-- Ajouter une licence
 
 ## Feature
 

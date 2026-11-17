@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { X } from 'lucide-react'
 import type { ColumnInfo, TableDetail } from '@shared/types'
+import { EnumSelect } from './EnumSelect'
 
 type Mode = 'value' | 'null' | 'default'
 interface Field { mode: Mode; text: string }
@@ -51,9 +52,11 @@ export function InsertDialog({ detail, onSubmit, onClose }: {
                   {c.primaryKey && <span className="text-[10px] uppercase text-accent">pk</span>}
                 </div>
                 <div className="flex gap-2">
-                  <input className="field font-mono" disabled={f.mode !== 'value'} value={f.mode === 'value' ? f.text : ''}
-                    placeholder={f.mode === 'default' ? (c.defaultValue ? `default: ${c.defaultValue}` : 'default') : f.mode === 'null' ? 'NULL' : ''}
-                    onChange={(e) => set(c.name, { text: e.target.value })} />
+                  {c.enumValues && f.mode === 'value'
+                    ? <EnumSelect className="field font-mono" options={c.enumValues} value={f.text} onChange={(text) => set(c.name, { text })} />
+                    : <input className="field font-mono" disabled={f.mode !== 'value'} value={f.mode === 'value' ? f.text : ''}
+                      placeholder={f.mode === 'default' ? (c.defaultValue ? `default: ${c.defaultValue}` : 'default') : f.mode === 'null' ? 'NULL' : ''}
+                      onChange={(e) => set(c.name, { text: e.target.value })} />}
                   <div className="flex shrink-0 rounded-lg overflow-hidden border border-line">
                     {(['value', 'null', 'default'] as Mode[]).filter((m) => (m !== 'null' || c.nullable) && (m !== 'default' || !req)).map((m) => (
                       <button key={m} onClick={() => set(c.name, { mode: m })}

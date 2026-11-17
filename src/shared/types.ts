@@ -44,6 +44,11 @@ export interface ColumnInfo {
   primaryKey: boolean
   /** User-provided column comment, when the engine supports them (PostgreSQL). */
   comment: string | null
+  /**
+   * Allowed values when the column type is an enum (or a domain over one), in
+   * sort order; `null` for any other type. Lets editors offer a picker.
+   */
+  enumValues: string[] | null
 }
 
 export interface ForeignKey {
@@ -97,6 +102,32 @@ export interface RoleInfo {
   validUntil: string | null
   /** Names of the roles this one is a member of. */
   memberOf: string[]
+}
+
+/** Kind of a user-defined PostgreSQL type, as created by `CREATE TYPE` / `CREATE DOMAIN`. */
+export type TypeKind = 'enum' | 'composite' | 'domain' | 'range'
+
+/** A user-defined type of a schema (PostgreSQL). Fields that do not apply to its `kind` are empty. */
+export interface TypeInfo {
+  schema: string
+  name: string
+  kind: TypeKind
+  owner: string
+  comment: string | null
+  /** Labels of an enum, in sort order. */
+  labels: string[]
+  /** Fields of a composite type, in declaration order. */
+  attributes: { name: string; type: string }[]
+  /** Underlying type of a domain, or subtype of a range. */
+  baseType: string | null
+  /** Domain only: whether `NOT NULL` is enforced. */
+  isNotNull: boolean
+  /** Domain only: default expression. */
+  defaultValue: string | null
+  /** Domain only: `CHECK (...)` constraint definitions. */
+  checks: string[]
+  /** Script recreating the type. */
+  definition: string
 }
 
 export interface TableDetail extends TableRef {
@@ -169,6 +200,8 @@ export interface Api {
     /** Roles of the server; empty for engines without a role system (SQLite). */
     roles(id: string): Promise<RoleInfo[]>
     tables(id: string, schema: string): Promise<TableRef[]>
+    /** User-defined types of a schema; empty for engines without them (SQLite). */
+    types(id: string, schema: string): Promise<TypeInfo[]>
     describe(id: string, schema: string, table: string): Promise<TableDetail>
     graph(id: string, schema: string): Promise<SchemaGraph>
     triggers(id: string, schema: string, table: string): Promise<TriggerInfo[]>

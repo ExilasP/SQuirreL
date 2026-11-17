@@ -11,6 +11,8 @@ import { useSqlNamespace } from '@/lib/sqlSchema'
 import { Grid }from '@/components/Grid'
 import { NameDialog } from '@/components/NameDialog'
 import { ExportMenu } from '@/components/ExportMenu'
+import { ResizeHandle } from '@/components/ResizeHandle'
+import { useResizable } from '@/lib/useResizable'
 
 export function QueryView({ tab }: { tab: Extract<Tab, { kind: 'query' }> }) {
   const { patchQuery, saveQueryTab, connections } = useStore()
@@ -21,6 +23,12 @@ export function QueryView({ tab }: { tab: Extract<Tab, { kind: 'query' }> }) {
   const [running, setRunning] = useState(false)
   const [sel, setSel] = useState('')
   const [isNaming, setIsNaming] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+  // Leave room for the toolbar and a few result rows below the editor.
+  const { size: editorHeight, handleProps } = useResizable({
+    storageKey: 'squirrel.queryEditorHeight', axis: 'y', initialSize: 280, minSize: 80,
+    maxSize: () => (containerRef.current?.clientHeight ?? window.innerHeight) - 160
+  })
 
   const run = async (text = sel || tab.sql) => {
     if (!text.trim()) return
@@ -65,7 +73,7 @@ export function QueryView({ tab }: { tab: Extract<Tab, { kind: 'query' }> }) {
   const exportFile = () => window.api.scripts.saveFile(null, tab.sql)
 
   return (
-    <div className="h-full flex flex-col">
+    <div ref={containerRef} className="h-full flex flex-col">
       <div className="flex items-center gap-2 px-3 h-12 border-b border-line">
         <button className="btn primary" disabled={running} onClick={() => run()}><Play size={14} /> {sel ? 'Run selection' : 'Run'}</button>
         <span className="text-dim text-xs">Ctrl+Enter</span>
@@ -76,11 +84,14 @@ export function QueryView({ tab }: { tab: Extract<Tab, { kind: 'query' }> }) {
           <button className="btn primary" title="Ctrl+S" onClick={save}><Save size={14} /> Save</button>
         </div>
       </div>
-      <div className="h-[40%] border-b border-line overflow-auto cursor-text" onMouseDown={focusEditorEnd}>
-        <CodeMirror value={tab.sql} height="100%" theme={oneDark} extensions={extensions} basicSetup={{ foldGutter: false }}
-          onCreateEditor={(view) => { editorRef.current = view }}
-          onChange={(v) => patchQuery(tab.id, { sql: v })}
-          onStatistics={(s) => setSel(s.selectionCode)} />
+      <div className="relative shrink-0 border-b border-line max-h-[calc(100%-160px)]" style={{ height: editorHeight }}>
+        <div className="h-full overflow-auto cursor-text" onMouseDown={focusEditorEnd}>
+          <CodeMirror value={tab.sql} height="100%" theme={oneDark} extensions={extensions} basicSetup={{ foldGutter: false }}
+            onCreateEditor={(view) => { editorRef.current = view }}
+            onChange={(v) => patchQuery(tab.id, { sql: v })}
+            onStatistics={(s) => setSel(s.selectionCode)} />
+        </div>
+        <ResizeHandle {...handleProps} />
       </div>
       <div className="flex-1 min-h-0">
         {err && <pre className="p-4 text-danger font-mono whitespace-pre-wrap">{err}</pre>}

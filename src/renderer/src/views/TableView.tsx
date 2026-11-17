@@ -2,6 +2,7 @@ import { useMemo, useState, type ComponentType } from 'react'
 import { Code2, Database, GitBranch, Key, Link2, ListTree, Network, Zap } from 'lucide-react'
 import { parseConnectionKey, type TableDetail } from '@shared/types'
 import { Erd } from '@/components/Erd'
+import { HorizontalScroller } from '@/components/HorizontalScroller'
 import { toDbml } from '@/lib/dbml'
 import { formatSql } from '@/lib/formatSql'
 import { useStore, type Tab } from '@/lib/store'
@@ -46,7 +47,7 @@ export function TableView({ tab }: { tab: TableTab }) {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex h-9 items-end gap-1 px-2 border-b border-line bg-panel overflow-x-auto">
+      <HorizontalScroller className="h-9 items-end gap-1 px-2 border-b border-line bg-panel">
         {panes.map(({ id, label, icon: Icon, count }) => (
           <button key={id} onClick={() => setPaneId(id)}
             className={`flex items-center gap-1.5 h-8 px-3 whitespace-nowrap border-b-2 ${id === paneId ? 'border-accent text-fg' : 'border-transparent text-dim hover:text-fg'}`}>
@@ -54,7 +55,7 @@ export function TableView({ tab }: { tab: TableTab }) {
             {detail && count && <span className="text-[10px] text-dim">{count(detail)}</span>}
           </button>
         ))}
-      </div>
+      </HorizontalScroller>
       <div className="flex-1 min-h-0 relative">
         {/* The data pane stays mounted so paging, sort and filter survive a pane switch. */}
         <div className={`absolute inset-0 ${paneId === 'data' ? '' : 'hidden'}`}><DataPane tab={tab} /></div>

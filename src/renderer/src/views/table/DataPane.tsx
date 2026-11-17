@@ -5,8 +5,14 @@ import { errMessage, useStore, type Tab } from '@/lib/store'
 import { Grid } from '@/components/Grid'
 import { InsertDialog } from '@/components/InsertDialog'
 import { ExportMenu } from '@/components/ExportMenu'
+import { WhereInput } from '@/components/WhereInput'
+import { SearchField } from '@/components/SearchField'
+import { useFindScope } from '@/lib/findScopes'
+import { useColumnSearch } from '@/lib/useColumnSearch'
 
 const PAGE = 200
+/** Stable fallback so the column search does not recompute before the first page loads. */
+const EMPTY_COLUMNS: string[] = []
 
 /** Row browser with paging, sorting, filtering and inline editing. */
 export function DataPane({ tab }: { tab: Extract<Tab, { kind: 'table' }> }) {
@@ -17,13 +23,19 @@ export function DataPane({ tab }: { tab: Extract<Tab, { kind: 'table' }> }) {
   const [sort, setSort] = useState<{ column: string; dir: 'asc' | 'desc' } | null>(null)
   const [where, setWhere] = useState('')
   const [applied, setApplied] = useState('')
-  const [selected, setSelected] = useState<number | null>(null)
+  const [selectedRows, setSelectedRows] = useState<number[]>([])
   const [loading, setLoading] = useState(false)
   const [inserting, setInserting] = useState(false)
 
   const detailRef = useRef<TableDetail | null>(null)
+  const paneRef = useRef<HTMLDivElement>(null)
+  const columnSearchRef = useRef<HTMLInputElement>(null)
+  const columnSearch = useColumnSearch(res?.columns ?? EMPTY_COLUMNS)
+  useFindScope(paneRef, () => { columnSearchRef.current?.focus(); columnSearchRef.current?.select() })
   const total = res?.total ?? 0
   const pks = useMemo(() => new Set(detail?.columns.filter((c) => c.primaryKey).map((c) => c.name)), [detail])
+  const nullableColumns = useMemo(() => new Set(detail?.columns.filter((c) => c.nullable).map((c) => c.name)), [detail])
+  const enumValuesByColumn = useMemo(() => new Map(detail?.columns.flatMap((c) => (c.enumValues ? [[c.name, c.enumValues] as const] : []))), [detail])
   const editable = detail?.kind === 'table'
 
   const load = useCallback(async () => {
@@ -34,7 +46,7 @@ export function DataPane({ tab }: { tab: Extract<Tab, { kind: 'table' }> }) {
       const pk = d.columns.find((c) => c.primaryKey)
       const orderBy = sort ?? (pk ? { column: pk.name, dir: 'asc' as const } : undefined)
       const r = await window.api.db.rows(tab.connId, { schema: tab.schema, table: tab.table, limit: PAGE, offset: page * PAGE, orderBy, where: applied })
-      detailRef.current = d; setDetail(d); setRes(r); setSelected(null)
+      detailRef.current = d; setDetail(d); setRes(r)
     } catch (e) { setError(errMessage(e)) } finally { setLoading(false) }
   }, [tab, page, sort, applied, setError])
   useEffect(() => { load() }, [load])
@@ -57,25 +69,36 @@ export function DataPane({ tab }: { tab: Extract<Tab, { kind: 'table' }> }) {
     } catch (e) { setError(errMessage(e)); throw e }
   }
 
-  const delRow = async () => {
-    if (selected === null || !confirm('Delete the selected row?')) return
-    try { await window.api.db.remove(tab.connId, tab.schema, tab.table, keyOf(res!.rows[selected])); await load() }
-    catch (e) { setError(errMessage(e)) }
+  const deleteSelectedRows = async () => {
+    const count = selectedRows.length
+    if (!count || !confirm(count === 1 ? 'Delete the selected row?' : `Delete the ${count} selected rows?`)) return
+    // Keys are captured up front: the rows array is replaced by the reload below.
+    const keys = selectedRows.map((i) => keyOf(res!.rows[i]))
+    try {
+      for (const key of keys) await window.api.db.remove(tab.connId, tab.schema, tab.table, key)
+    } catch (e) { setError(errMessage(e)) }
+    await load()
   }
 
   const pages = Math.max(1, Math.ceil(total / PAGE))
 
   return (
-    <div className="h-full flex flex-col">
+    <div ref={paneRef} className="h-full flex flex-col">
       <div className="flex items-center gap-2 px-3 h-12 border-b border-line">
-        <input className="field !w-96 font-mono" placeholder="WHERE …   e.g.  age > 30 AND name LIKE 'A%'" value={where}
-          onChange={(e) => setWhere(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { setPage(0); setApplied(where) } }} />
+        <WhereInput className="flex-1 min-w-40 max-w-96" value={where} columns={detail?.columns ?? []} onChange={setWhere} onSubmit={() => { setPage(0); setApplied(where) }} />
+        <SearchField ref={columnSearchRef} className="w-48 shrink-0" placeholder="Find column… (Ctrl+F)" value={columnSearch.query} onChange={columnSearch.setQuery}
+          status={`${columnSearch.position} / ${columnSearch.matches.size}`} hasNoMatch={columnSearch.matches.size === 0}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); columnSearch.step(e.shiftKey ? -1 : 1) } }} />
         <button className="btn" onClick={load} title="Refresh"><RefreshCw size={14} className={loading ? 'animate-spin' : ''} /></button>
         {editable && <>
           <button className="btn" onClick={() => setInserting(true)}><Plus size={14} /> Row</button>
-          <button className="btn danger" disabled={selected === null} onClick={delRow}><Trash2 size={14} /> Delete</button>
+          {selectedRows.length > 0 && (
+            <button className="btn danger" onClick={deleteSelectedRows}>
+              <Trash2 size={14} /> Delete{selectedRows.length > 1 ? ` (${selectedRows.length})` : ''}
+            </button>
+          )}
         </>}
-        <div className="ml-auto flex items-center gap-2 text-dim">
+        <div className="ml-auto flex items-center gap-2 text-dim whitespace-nowrap">
           <ExportMenu run={(f) => window.api.export.table(tab.connId, { schema: tab.schema, table: tab.table, where: applied, orderBy: sort ?? (pks.size ? { column: [...pks][0], dir: 'asc' } : undefined) }, f)} />
           <span>{total.toLocaleString()} rows</span>
           <button className="btn !p-1" disabled={page === 0} onClick={() => setPage(page - 1)}><ChevronLeft size={14} /></button>
@@ -84,9 +107,10 @@ export function DataPane({ tab }: { tab: Extract<Tab, { kind: 'table' }> }) {
         </div>
       </div>
       <div className="flex-1 min-h-0">
-        {res && <Grid columns={res.columns} rows={res.rows} pkColumns={pks} sort={sort} selected={selected} onSelect={setSelected}
+        {res && <Grid columns={res.columns} rows={res.rows} pkColumns={pks} nullableColumns={nullableColumns} enumValuesByColumn={enumValuesByColumn} sort={sort} onSelectedRowsChange={setSelectedRows}
+          selectionResetKey={`${page}|${sort?.column}|${sort?.dir}|${applied}`}
           onSort={(c) => { setPage(0); setSort(sort?.column === c ? (sort.dir === 'asc' ? { column: c, dir: 'desc' } : null) : { column: c, dir: 'asc' }) }}
-          onEdit={editable ? edit : undefined} />}
+          onEdit={editable ? edit : undefined} matchedColumns={columnSearch.matches} focusedColumn={columnSearch.current} />}
       </div>
       <div className="h-8 px-3 flex items-center gap-4 border-t border-line text-dim text-xs">
         <span>{tab.schema}.{tab.table}</span>

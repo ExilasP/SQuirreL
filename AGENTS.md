@@ -8,6 +8,7 @@ Guide pour les agents (et humains) qui travaillent sur SQuirreL : gestionnaire d
 npm install
 npm run dev        # développement
 npm run typecheck  # à lancer avant chaque commit
+npm test           # tests unitaires (vitest), à lancer avant chaque commit
 npm run build      # build electron-vite
 npm run dist       # package (AppImage)
 ```
@@ -17,7 +18,7 @@ npm run dist       # package (AppImage)
 - `src/main/` : process Electron principal. `drivers/` contient un fichier par moteur de BDD implémentant `Driver` (`drivers/types.ts`), enregistré dans `drivers/index.ts`. `ipc.ts` expose les handlers IPC.
 - `src/preload/` : pont sécurisé entre main et renderer.
 - `src/shared/types.ts` : contrat d'API typé (`Api`) partagé. Toute nouvelle fonctionnalité IPC commence ici.
-- `src/renderer/src/` : UI React. `views/` (Table, Query, Diagram, un onglet chacune), `components/`, `lib/` (store zustand, utilitaires).
+- `src/renderer/src/` : UI React. `views/` (Table, Query, Diagram, un onglet chacune), `components/`, `lib/` (store zustand, utilitaires). Les onglets sont répartis dans un arbre de splits horizontaux/verticaux : modèle et géométrie en fonctions pures testées (`lib/panes.ts`, `lib/paneGeometry.ts`, `lib/paneDrop.ts`), affichage dans `components/workspace/`. Ctrl+F : chaque zone cherchable s'enregistre via `useFindScope` (`lib/findScopes.ts`).
 
 Ajouter un moteur de BDD : implémenter `Driver`, l'enregistrer dans `drivers/index.ts`, étendre `DriverId` dans `shared/types.ts`.
 
@@ -94,6 +95,11 @@ Commente les propriétés non évidentes des interfaces (`/** … */`) et les ch
 - `camelCase` pour variables et fonctions, `PascalCase` pour types et composants React, `UPPER_SNAKE_CASE` pour les vraies constantes.
 - Pas d'abréviations obscures ni de noms à une lettre (hors indices de boucle triviaux).
 
+### Tests
+
+- Les fonctions pures de `lib/` ont des tests unitaires à côté d'elles (`foo.ts` → `foo.test.ts`, vitest).
+- Toute logique non triviale ajoutée dans `lib/` vient avec ses tests.
+
 ### TypeScript
 
 - Mode strict : pas de `any` (utilise `unknown` + narrowing). Typage explicite des frontières (IPC, drivers, props).
@@ -108,7 +114,7 @@ Commente les propriétés non évidentes des interfaces (`/** … */`) et les ch
 
 ## Avant de terminer une tâche
 
-1. `npm run typecheck` passe.
+1. `npm run typecheck` et `npm test` passent.
 2. L'app démarre (`npm run dev`) si le changement touche l'UI ou l'IPC.
 3. La doc concernée (README, TODO, TSDoc) est à jour.
 4. Les changements sont commités en commits atomiques et conventionnels.

@@ -1,10 +1,15 @@
 import { create } from 'zustand'
 import { databaseKey, parseConnectionKey, type ConnectionConfig, type SavedQuery, type TableRef } from '@shared/types'
+import {
+  activateTab, activeTabId, closeTabsIn, createEmptyLayout, equalizeSplit, focusPane, moveTabTo, openTabIn, resizeSplit,
+  selectInFocusedPane, splitTabTo, type Layout, type SplitEdge,
+} from './panes'
 
 export type Tab =
   | { id: string; kind: 'table'; connId: string; schema: string; table: string; title: string }
   | { id: string; kind: 'query'; connId: string; title: string; sql: string; /** Library entry this tab edits, `null` for a scratch query. */ savedId: string | null; /** Last saved text, to detect unsaved changes. */ savedSql: string }
   | { id: string; kind: 'roles'; connId: string; title: string }
+  | { id: string; kind: 'types'; connId: string; schema: string; title: string }
   | { id: string; kind: 'diagram'; connId: string; schema: string; title: string; /** When set, only this table and its FK neighbours are drawn. */ focusTable?: string }
 
 interface TreeNode {
@@ -21,8 +26,9 @@ interface State {
   connections: ConnectionConfig[]
   opened: Record<string, TreeNode>
   savedQueries: SavedQuery[]
+  /** Every open tab, whatever its pane; `layout` decides where each is shown. */
   tabs: Tab[]
-  activeTab: string | null
+  layout: Layout
   error: string | null
   init(): Promise<void>
   saveConnection(c: ConnectionConfig): Promise<void>
@@ -34,20 +40,33 @@ interface State {
   /** Key under which `database` of `connId` is opened (the connection id itself for its default database). */
   databaseKeyOf(connId: string, database: string): string
   loadTables(connId: string, schema: string): Promise<void>
+  /** Loads the tables of every schema not loaded yet, across all opened databases, so they can all be searched. */
+  loadAllTables(): Promise<void>
   openTab(t: Tab): void
   openTable(connId: string, schema: string, table: string): void
   /** Opens (or focuses) the roles and users tab of a connection. */
   openRoles(connId: string): void
+  /** Opens (or focuses) the user-defined types tab of a schema. */
+  openTypes(connId: string, schema: string): void
   /** Opens a blank query tab on `connId`. */
   openNewQuery(connId: string): void
   /** Opens a blank query on the active tab's connection, else the first open one. */
   newQueryOnActiveConnection(): void
-  /** Activates the next (`1`) or previous (`-1`) tab, wrapping around. */
+  /** Activates the next (`1`) or previous (`-1`) tab of the focused pane, wrapping around. */
   cycleTab(direction: 1 | -1): void
-  /** Activates the tab at `index`, if any. */
+  /** Activates the tab at `index` in the focused pane, if any. */
   goToTab(index: number): void
   closeTab(id: string): void
+  /** Moves a tab to `position` in the strip of a pane. */
+  moveTab(id: string, paneId: string, position: number): void
+  /** Moves a tab into a new pane on one edge of `paneId`. */
+  splitTab(id: string, paneId: string, edge: SplitEdge): void
   setActive(id: string): void
+  focusPane(paneId: string): void
+  /** Sets the shares of a split's children (see `moveBoundary`). */
+  resizeSplit(splitId: string, sizes: readonly number[]): void
+  /** Gives every child of a split the same share. */
+  equalizeSplit(splitId: string): void
   /** Saves a query tab to the library; `name` is required the first time. */
   saveQueryTab(tabId: string, name?: string): Promise<void>
   openSavedQuery(q: SavedQuery): void
@@ -57,10 +76,19 @@ interface State {
   setError(e: string | null): void
 }
 
+const withoutConnection = (opened: Record<string, TreeNode>, connId: string): Record<string, TreeNode> =>
+  Object.fromEntries(Object.entries(opened).filter(([key]) => !isOfConnection(key, connId)))
+
+/** Closes every tab of a connection, in the tab list and in the layout alike. */
+function withoutConnectionTabs({ tabs, layout }: Pick<State, 'tabs' | 'layout'>, connId: string): Pick<State, 'tabs' | 'layout'> {
+  const closedIds = tabs.filter((t) => isOfConnection(t.connId, connId)).map((t) => t.id)
+  return { tabs: tabs.filter((t) => !closedIds.includes(t.id)), layout: closeTabsIn(layout, closedIds) }
+}
+
 const msg = (e: unknown) => (e as Error).message.replace(/^Error invoking remote method '[^']+': (Error: )?/i, '')
 
 export const useStore = create<State>((set, get) => ({
-  connections: [], savedQueries: [], opened: {}, tabs: [], activeTab: null, error: null,
+  connections: [], savedQueries: [], opened: {}, tabs: [], layout: createEmptyLayout(), error: null,
   async init() {
     const [connections, savedQueries] = await Promise.all([window.api.connections.list(), window.api.queries.list()])
     set({ connections, savedQueries })
@@ -68,8 +96,7 @@ export const useStore = create<State>((set, get) => ({
   async saveConnection(c) { set({ connections: await window.api.connections.save(c) }) },
   async removeConnection(id) {
     set({ connections: await window.api.connections.remove(id) })
-    const { opened, tabs } = get()
-    set({ opened: Object.fromEntries(Object.entries(opened).filter(([key]) => !isOfConnection(key, id))), tabs: tabs.filter((t) => !isOfConnection(t.connId, id)), savedQueries: await window.api.queries.list() })
+    set({ opened: withoutConnection(get().opened, id), ...withoutConnectionTabs(get(), id), savedQueries: await window.api.queries.list() })
   },
   async openConnection(id) {
     try {
@@ -81,8 +108,7 @@ export const useStore = create<State>((set, get) => ({
   },
   async closeConnection(id) {
     await window.api.connections.close(id)
-    const { opened, tabs } = get()
-    set({ opened: Object.fromEntries(Object.entries(opened).filter(([key]) => !isOfConnection(key, id))), tabs: tabs.filter((t) => !isOfConnection(t.connId, id)) })
+    set({ opened: withoutConnection(get().opened, id), ...withoutConnectionTabs(get(), id) })
   },
   databaseKeyOf(connId, database) {
     return get().connections.find((c) => c.id === connId)?.database === database ? connId : databaseKey(connId, database)
@@ -101,9 +127,16 @@ export const useStore = create<State>((set, get) => ({
     const tables = await window.api.db.tables(connId, schema)
     set((s) => ({ opened: { ...s.opened, [connId]: { ...s.opened[connId], tables: { ...s.opened[connId].tables, [schema]: tables } } } }))
   },
+  async loadAllTables() {
+    const missing = Object.entries(get().opened).flatMap(([key, node]) =>
+      node.schemas.filter((schema) => !node.tables[schema]).map((schema) => ({ key, schema })))
+    // One unreadable schema (e.g. no privilege) must not hide the others.
+    await Promise.allSettled(missing.map(({ key, schema }) => get().loadTables(key, schema)))
+  },
   openTab(t) {
-    const exists = get().tabs.find((x) => x.id === t.id)
-    set({ tabs: exists ? get().tabs : [...get().tabs, t], activeTab: t.id })
+    const { tabs, layout } = get()
+    const exists = tabs.some((x) => x.id === t.id)
+    set({ tabs: exists ? tabs : [...tabs, t], layout: openTabIn(layout, t.id) })
   },
   openTable(connId, schema, table) {
     get().openTab({ id: `t:${connId}:${schema}.${table}`, kind: 'table', connId, schema, table, title: table })
@@ -111,31 +144,33 @@ export const useStore = create<State>((set, get) => ({
   openRoles(connId) {
     get().openTab({ id: `r:${connId}`, kind: 'roles', connId, title: 'Roles' })
   },
+  openTypes(connId, schema) {
+    get().openTab({ id: `ty:${connId}:${schema}`, kind: 'types', connId, schema, title: `Types · ${schema}` })
+  },
   openNewQuery(connId) {
     get().openTab({ id: `q:${connId}:${Date.now()}`, kind: 'query', connId, title: 'Query', sql: '', savedId: null, savedSql: '' })
   },
   newQueryOnActiveConnection() {
-    const { tabs, activeTab, opened } = get()
-    const activeConnId = tabs.find((t) => t.id === activeTab)?.connId
+    const { tabs, layout, opened } = get()
+    const activeConnId = tabs.find((t) => t.id === activeTabId(layout))?.connId
     const connId = activeConnId && opened[activeConnId] ? activeConnId : Object.keys(opened)[0]
     if (connId) get().openNewQuery(connId)
     else set({ error: 'Open a connection first to create a query.' })
   },
   cycleTab(direction) {
-    const { tabs, activeTab } = get()
-    if (tabs.length === 0) return
-    const current = tabs.findIndex((t) => t.id === activeTab)
-    set({ activeTab: tabs[(current + direction + tabs.length) % tabs.length].id })
+    set({ layout: selectInFocusedPane(get().layout, (ids, current) => ids[(current + direction + ids.length) % ids.length]) })
   },
   goToTab(index) {
-    const tab = get().tabs[index]
-    if (tab) set({ activeTab: tab.id })
+    set({ layout: selectInFocusedPane(get().layout, (ids) => ids[index]) })
   },
   closeTab(id) {
-    const { tabs, activeTab } = get(); const i = tabs.findIndex((t) => t.id === id)
-    const next = tabs.filter((t) => t.id !== id)
-    set({ tabs: next, activeTab: activeTab === id ? (next[Math.min(i, next.length - 1)]?.id ?? null) : activeTab })
+    set((s) => ({ tabs: s.tabs.filter((t) => t.id !== id), layout: closeTabsIn(s.layout, [id]) }))
   },
+  moveTab: (id, paneId, position) => set((s) => ({ layout: moveTabTo(s.layout, id, paneId, position) })),
+  splitTab: (id, paneId, edge) => set((s) => ({ layout: splitTabTo(s.layout, id, paneId, edge) })),
+  focusPane: (paneId) => set((s) => (s.layout.focusedPaneId === paneId ? s : { layout: focusPane(s.layout, paneId) })),
+  resizeSplit: (splitId, sizes) => set((s) => ({ layout: resizeSplit(s.layout, splitId, sizes) })),
+  equalizeSplit: (splitId) => set((s) => ({ layout: equalizeSplit(s.layout, splitId) })),
   async saveQueryTab(tabId, name) {
     const tab = get().tabs.find((t) => t.id === tabId)
     if (tab?.kind !== 'query') return
@@ -158,7 +193,7 @@ export const useStore = create<State>((set, get) => ({
     // Keep open tabs as scratch queries so no text is lost.
     set((s) => ({ tabs: s.tabs.map((t) => (t.kind === 'query' && t.savedId === id ? { ...t, savedId: null, savedSql: '' } : t)) }))
   },
-  setActive: (id) => set({ activeTab: id }),
+  setActive: (id) => set((s) => ({ layout: activateTab(s.layout, id) })),
   patchQuery: (id, p) => set((s) => ({ tabs: s.tabs.map((t) => (t.id === id && t.kind === 'query' ? { ...t, ...p } : t)) })),
   setError: (error) => set({ error })
 }))
