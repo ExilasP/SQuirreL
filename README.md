@@ -41,7 +41,7 @@ A sample SQLite database is provided in [`samples/demo.db`](samples/demo.db) to 
 - PostgreSQL **user-defined types** (enum, composite, domain, range) browsable per schema.
 
 ### Table viewer & data editor
-- Paginated, sortable data grid with a raw `WHERE` filter.
+- Paginated, sortable data grid with a raw `WHERE` filter (column-name autocompletion, Ctrl+Space to list all).
 - **Inline editing**, row insertion and deletion, `NULL` support for nullable columns, drop-down editor for PostgreSQL enum columns.
 - Spreadsheet-like **cell and multi-row selection**, arrow-key navigation, **Ctrl+C copy**.
 - **Export to CSV or JSON** (whole table or query result).
@@ -98,7 +98,7 @@ Tech stack: Electron, React 19, TypeScript, Tailwind CSS, CodeMirror, React Flow
 
 ## Roadmap
 
-Done: multi-connection ✅ · table viewer ✅ · inline edit/insert/delete ✅ · SQL scripts (run, saved query library) ✅ · ER diagram ✅ · table sub-views (structure, DDL, DBML, ERD) ✅ · keyboard shortcuts ✅ · grid selection with keyboard navigation and copy ✅ · CSV/JSON export ✅ · PostgreSQL roles ✅ · PostgreSQL user-defined types and enum editing ✅ · resizable panes ✅ · draggable tabs and nested horizontal/vertical split view ✅
+Done: multi-connection ✅ · table viewer ✅ · inline edit/insert/delete ✅ · SQL scripts (run, saved query library) ✅ · ER diagram ✅ · table sub-views (structure, DDL, DBML, ERD) ✅ · keyboard shortcuts ✅ · grid selection with keyboard navigation and copy ✅ · CSV/JSON export ✅ · PostgreSQL roles ✅ · PostgreSQL user-defined types and enum editing ✅ · resizable panes ✅ · draggable tabs and nested horizontal/vertical split view ✅ · Ctrl+F search (sidebar schemas and tables, table columns, data grid columns, ERD tables and columns) ✅
 
 Next:
 - [ ] MySQL / MariaDB driver
