@@ -1,9 +1,10 @@
-import { useState } from 'react'
-import { Code2, Shapes } from 'lucide-react'
-import type { TypeInfo, TypeKind } from '@shared/types'
+import { useMemo, useState } from 'react'
+import { Code2, Pencil, Shapes } from 'lucide-react'
+import type { TypeAlteration, TypeInfo, TypeKind } from '@shared/types'
 import { Badge, MetaTable, type MetaColumn } from '@/components/MetaTable'
 import { useAsync } from '@/lib/useAsync'
 import type { Tab } from '@/lib/store'
+import { TypeEditorDialog } from '@/components/typeEditor/TypeEditorDialog'
 import { CodePane } from './table/CodePane'
 
 type PaneId = 'list' | 'ddl'
@@ -20,7 +21,10 @@ function describeType(t: TypeInfo): string {
   }
 }
 
-const columns: MetaColumn<TypeInfo>[] = [
+const buildColumns = (onEdit: (t: TypeInfo) => void): MetaColumn<TypeInfo>[] => [
+  {
+    header: '', render: (t) => <button className="btn ghost !p-1" title={`Edit ${t.name}`} onClick={() => onEdit(t)}><Pencil size={13} /></button>
+  },
   { header: 'Name', className: 'font-medium', render: (t) => t.name },
   { header: 'Kind', render: (t) => <Badge tone={t.kind === 'enum' ? 'accent' : t.kind === 'domain' ? 'ok' : 'dim'}>{KIND_LABELS[t.kind]}</Badge> },
   { header: 'Definition', className: 'font-mono', render: describeType },
@@ -37,7 +41,15 @@ const PANES = [
 export function TypesView({ tab }: { tab: Extract<Tab, { kind: 'types' }> }) {
   const [paneId, setPaneId] = useState<PaneId>('list')
   // Refetched on every pane switch so types created from a query tab show up.
-  const { data } = useAsync(() => window.api.db.types(tab.connId, tab.schema), [tab.connId, tab.schema, paneId])
+  const { data, reload } = useAsync(() => window.api.db.types(tab.connId, tab.schema), [tab.connId, tab.schema, paneId])
+  const [editedType, setEditedType] = useState<TypeInfo | null>(null)
+  const columns = useMemo(() => buildColumns(setEditedType), [])
+
+  const applyAlterations = async (alterations: TypeAlteration[]) => {
+    if (!editedType) return
+    await window.api.db.alterType(tab.connId, editedType, alterations)
+    reload()
+  }
 
   return (
     <div className="h-full flex flex-col">
@@ -55,6 +67,7 @@ export function TypesView({ tab }: { tab: Extract<Tab, { kind: 'types' }> }) {
           ? (data ? <MetaTable columns={columns} rows={data} emptyMessage="No user-defined types in this schema" /> : <div className="h-full grid place-items-center text-dim">Loading types…</div>)
           : <CodePane code={data ? data.map((t) => t.definition).join('\n\n') : null} emptyMessage="No user-defined types in this schema" sqlDriver="postgres" />}
       </div>
+      {editedType && <TypeEditorDialog type={editedType} onApply={applyAlterations} onClose={() => setEditedType(null)} />}
     </div>
   )
 }
