@@ -1,5 +1,5 @@
 import type {
-  ConnectionConfig, QueryResult, RoleInfo, RowChange, RowsRequest, SchemaGraph, TableDetail, TableRef, TriggerInfo, TypeInfo
+  ConnectionConfig, QueryResult, RoleInfo, RowChange, RowsRequest, SchemaGraph, TableDetail, TableRef, TriggerInfo, TypeAlteration, TypeInfo, TypeTarget
 } from '@shared/types'
 
 /**
@@ -17,6 +17,8 @@ export interface Driver {
   listTables(schema: string): Promise<TableRef[]>
   /** User-defined types (enums, composites, domains, ranges); engines without them return an empty list. */
   listTypes(schema: string): Promise<TypeInfo[]>
+  /** Applies the alterations to a user-defined type in one transaction; engines without types reject. */
+  alterType(target: TypeTarget, alterations: TypeAlteration[]): Promise<void>
   describeTable(schema: string, table: string): Promise<TableDetail>
   graph(schema: string): Promise<SchemaGraph>
   listTriggers(schema: string, table: string): Promise<TriggerInfo[]>

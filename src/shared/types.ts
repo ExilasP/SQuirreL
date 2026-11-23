@@ -137,6 +137,32 @@ export interface TypeInfo {
   definition: string
 }
 
+/** Identifies the type an alteration applies to. */
+export type TypeTarget = Pick<TypeInfo, 'schema' | 'name' | 'kind'>
+
+/**
+ * One change to a user-defined type, translated to an `ALTER TYPE` / `ALTER DOMAIN`
+ * statement. Types, default and check expressions are raw SQL fragments typed by the user.
+ */
+export type TypeAlteration =
+  | { op: 'rename'; newName: string }
+  | { op: 'setOwner'; owner: string }
+  /** `null` removes the comment. */
+  | { op: 'setComment'; comment: string | null }
+  /** Without `placement` the value goes last. */
+  | { op: 'addEnumValue'; value: string; placement?: { position: 'before' | 'after'; neighbor: string } }
+  | { op: 'renameEnumValue'; from: string; to: string }
+  | { op: 'addAttribute'; name: string; type: string }
+  | { op: 'dropAttribute'; name: string }
+  | { op: 'renameAttribute'; from: string; to: string }
+  | { op: 'alterAttributeType'; name: string; type: string }
+  /** `null` drops the default. */
+  | { op: 'setDefault'; expression: string | null }
+  | { op: 'setNotNull'; isNotNull: boolean }
+  /** `expression` is either a bare boolean expression or a full `CHECK (...)` clause. */
+  | { op: 'addCheck'; expression: string }
+  | { op: 'dropCheck'; name: string }
+
 export interface TableDetail extends TableRef {
   columns: ColumnInfo[]
   foreignKeys: ForeignKey[]
@@ -209,6 +235,8 @@ export interface Api {
     tables(id: string, schema: string): Promise<TableRef[]>
     /** User-defined types of a schema; empty for engines without them (SQLite). */
     types(id: string, schema: string): Promise<TypeInfo[]>
+    /** Applies the alterations in order, all or nothing; rejects on engines without user-defined types. */
+    alterType(id: string, target: TypeTarget, alterations: TypeAlteration[]): Promise<void>
     describe(id: string, schema: string, table: string): Promise<TableDetail>
     graph(id: string, schema: string): Promise<SchemaGraph>
     triggers(id: string, schema: string, table: string): Promise<TriggerInfo[]>

@@ -1,5 +1,6 @@
 import type pg from 'pg'
-import type { TypeInfo, TypeKind } from '@shared/types'
+import type { TypeAlteration, TypeInfo, TypeKind, TypeTarget } from '@shared/types'
+import { buildAlterTypeStatements } from '@shared/typeAlterations'
 import { quoteIdent as q, quoteLiteral } from '@shared/sql'
 
 const KINDS: Record<string, TypeKind> = { e: 'enum', c: 'composite', d: 'domain', r: 'range' }
@@ -55,4 +56,25 @@ export async function fetchTypes(pool: pg.Pool, schema: string): Promise<TypeInf
     }
     return { ...info, definition: buildTypeDefinition(info) }
   })
+}
+
+/**
+ * Alters a user-defined type, rolling every statement back if one fails so a
+ * half-applied edit never leaves the type in an intermediate state.
+ *
+ * @throws The first PostgreSQL error, e.g. a value already present or a type in use.
+ */
+export async function alterType(pool: pg.Pool, target: TypeTarget, alterations: TypeAlteration[]): Promise<void> {
+  const client = await pool.connect()
+  try {
+    await client.query('BEGIN')
+    // ADD VALUE is allowed in a transaction since PostgreSQL 12, as long as the new label is not used before COMMIT.
+    for (const statement of buildAlterTypeStatements(target, alterations)) await client.query(statement)
+    await client.query('COMMIT')
+  } catch (e) {
+    await client.query('ROLLBACK').catch(() => {})
+    throw e
+  } finally {
+    client.release()
+  }
 }
