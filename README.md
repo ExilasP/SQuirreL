@@ -38,7 +38,7 @@ A sample SQLite database is provided in [`samples/demo.db`](samples/demo.db) to 
 - **SQLite** (local file) and **PostgreSQL** (host/port, optional SSL).
 - **Multiple connections** open at the same time, each with its schemas and databases in the sidebar.
 - PostgreSQL **roles** viewer: users, groups, privileges and memberships.
-- PostgreSQL **user-defined types** (enum, composite, domain, range) browsable per schema.
+- PostgreSQL **user-defined types** (enum, composite, domain, range) browsable per schema and editable: rename, owner, comment, enum values (add, rename), composite attributes (add, drop, rename, retype), domain default, `NOT NULL` and checks, with a preview of the generated SQL.
 
 ### Table viewer & data editor
 - Paginated, sortable data grid with a raw `WHERE` filter (column-name autocompletion, Ctrl+Space to list all).
@@ -98,7 +98,7 @@ Tech stack: Electron, React 19, TypeScript, Tailwind CSS, CodeMirror, React Flow
 
 ## Roadmap
 
-Done: multi-connection ✅ · table viewer ✅ · inline edit/insert/delete ✅ · SQL scripts (run, saved query library) ✅ · ER diagram ✅ · table sub-views (structure, DDL, DBML, ERD) ✅ · keyboard shortcuts ✅ · grid selection with keyboard navigation and copy ✅ · CSV/JSON export ✅ · PostgreSQL roles ✅ · PostgreSQL user-defined types and enum editing ✅ · resizable panes ✅ · draggable tabs and nested horizontal/vertical split view ✅ · Ctrl+F search (sidebar schemas and tables, table columns, data grid columns, ERD tables and columns) ✅
+Done: multi-connection ✅ · table viewer ✅ · inline edit/insert/delete ✅ · SQL scripts (run, saved query library) ✅ · ER diagram ✅ · table sub-views (structure, DDL, DBML, ERD) ✅ · keyboard shortcuts ✅ · grid selection with keyboard navigation and copy ✅ · CSV/JSON export ✅ · PostgreSQL roles ✅ · PostgreSQL user-defined types (browse and edit) and enum editing ✅ · resizable panes ✅ · draggable tabs and nested horizontal/vertical split view ✅ · Ctrl+F search (sidebar schemas and tables, table columns, data grid columns, ERD tables and columns) ✅
 
 Next:
 - [ ] MySQL / MariaDB driver
