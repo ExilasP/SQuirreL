@@ -1,6 +1,6 @@
 {
   "name": "datafinder",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Free, open-source database manager and SQL client for SQLite and PostgreSQL (Linux, Windows)",
   "keywords": [
     "database",
