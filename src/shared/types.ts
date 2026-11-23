@@ -107,6 +107,13 @@ export interface RoleInfo {
 /** Kind of a user-defined PostgreSQL type, as created by `CREATE TYPE` / `CREATE DOMAIN`. */
 export type TypeKind = 'enum' | 'composite' | 'domain' | 'range'
 
+/** A named `CHECK` constraint of a domain. */
+export interface DomainCheck {
+  name: string
+  /** Full constraint definition, e.g. `CHECK ((VALUE > 0))`. */
+  definition: string
+}
+
 /** A user-defined type of a schema (PostgreSQL). Fields that do not apply to its `kind` are empty. */
 export interface TypeInfo {
   schema: string
@@ -124,8 +131,8 @@ export interface TypeInfo {
   isNotNull: boolean
   /** Domain only: default expression. */
   defaultValue: string | null
-  /** Domain only: `CHECK (...)` constraint definitions. */
-  checks: string[]
+  /** Domain only: `CHECK (...)` constraints, by name. */
+  checks: DomainCheck[]
   /** Script recreating the type. */
   definition: string
 }

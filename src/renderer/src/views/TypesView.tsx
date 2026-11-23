@@ -16,7 +16,7 @@ function describeType(t: TypeInfo): string {
     case 'enum': return t.labels.join(', ')
     case 'composite': return t.attributes.map((a) => `${a.name} ${a.type}`).join(', ')
     case 'range': return `subtype ${t.baseType}`
-    case 'domain': return [t.baseType, t.isNotNull ? 'NOT NULL' : '', t.defaultValue !== null ? `DEFAULT ${t.defaultValue}` : '', ...t.checks].filter(Boolean).join(' ')
+    case 'domain': return [t.baseType, t.isNotNull ? 'NOT NULL' : '', t.defaultValue !== null ? `DEFAULT ${t.defaultValue}` : '', ...t.checks.map((c) => c.definition)].filter(Boolean).join(' ')
   }
 }
 

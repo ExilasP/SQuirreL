@@ -18,7 +18,7 @@ function buildTypeDefinition(t: Omit<TypeInfo, 'definition'>): string {
       const clauses = [
         t.defaultValue !== null ? `DEFAULT ${t.defaultValue}` : '',
         t.isNotNull ? 'NOT NULL' : '',
-        ...t.checks
+        ...t.checks.map((c) => c.definition)
       ].filter(Boolean)
       return `CREATE DOMAIN ${name} AS ${t.baseType}${clauses.map((c) => `\n  ${c}`).join('')};`
     }
@@ -39,7 +39,8 @@ export async function fetchTypes(pool: pg.Pool, schema: string): Promise<TypeInf
                       FROM pg_attribute a WHERE a.attrelid = t.typrelid AND a.attnum > 0 AND NOT a.attisdropped), '[]') AS attributes,
             CASE t.typtype WHEN 'd' THEN format_type(t.typbasetype, t.typtypmod) WHEN 'r' THEN format_type(rg.rngsubtype, NULL) END AS base_type,
             t.typnotnull AS not_null, t.typdefault AS default_value,
-            ARRAY(SELECT pg_get_constraintdef(c.oid) FROM pg_constraint c WHERE c.contypid = t.oid AND c.contype = 'c' ORDER BY c.conname) AS checks
+            COALESCE((SELECT json_agg(json_build_object('name', c.conname, 'definition', pg_get_constraintdef(c.oid)) ORDER BY c.conname)
+                      FROM pg_constraint c WHERE c.contypid = t.oid AND c.contype = 'c'), '[]') AS checks
      FROM pg_type t
      JOIN pg_namespace n ON n.oid = t.typnamespace
      LEFT JOIN pg_class rel ON rel.oid = t.typrelid
