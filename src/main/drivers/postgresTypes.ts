@@ -1,10 +1,8 @@
 import type pg from 'pg'
 import type { TypeInfo, TypeKind } from '@shared/types'
-import { quoteIdent as q } from './types'
+import { quoteIdent as q, quoteLiteral } from '@shared/sql'
 
 const KINDS: Record<string, TypeKind> = { e: 'enum', c: 'composite', d: 'domain', r: 'range' }
-
-const quoteLiteral = (s: string): string => `'${s.replace(/'/g, "''")}'`
 
 /** Rebuilds the `CREATE TYPE` / `CREATE DOMAIN` statement; PostgreSQL has no `pg_get_typedef`. */
 function buildTypeDefinition(t: Omit<TypeInfo, 'definition'>): string {

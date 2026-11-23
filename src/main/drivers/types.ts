@@ -31,4 +31,4 @@ export interface Driver {
 
 export type DriverFactory = (config: ConnectionConfig) => Driver
 
-export const quoteIdent = (s: string): string => `"${s.replace(/"/g, '""')}"`
+export { quoteIdent } from '@shared/sql'
